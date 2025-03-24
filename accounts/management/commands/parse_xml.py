@@ -8,8 +8,7 @@ class Command(BaseCommand):
     help = "Parse XML feed and store property data in the database"
 
     def handle(self, *args, **kwargs):
-        # XML feed URL
-        xml_url = "https://ibizaluxuryxl.com/kyero-xmlfeed/"  # Replace with actual URL
+        xml_url = "https://ibizaluxuryxl.com/kyero-xmlfeed/"
         response = requests.get(xml_url)
         root = ET.fromstring(response.content)
 
