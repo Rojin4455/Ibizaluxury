@@ -134,7 +134,7 @@ USE_TZ = True
 CELERY_BEAT_SCHEDULE = {
     'update-xml': {
         'task': 'accounts.tasks.handle_xmlfeed',
-        'schedule': crontab(minute='*'),
+        'schedule': crontab(hour='*/24'),
     }
 }
 
