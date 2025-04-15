@@ -1,19 +1,26 @@
+
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from accounts.models import PropertyData
-from accounts.serializers import PropertySerializer
+
 from rest_framework import status
 from rest_framework.generics import ListAPIView
 from .pagination import PropertyPagination
 from accounts.models import PropertyData
 from django.db.models import Max, Min
 from django.db.models import F
+from rest_framework import viewsets, filters as drf_filters
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.pagination import PageNumberPagination
+from .models import PropertyData
+from .serializers import PropertyDataSerializer
+from .filters import PropertyDataFilter
 
 
 class PropertiesView(ListAPIView):
     queryset = PropertyData.objects.all().order_by('-id')
-    serializer_class = PropertySerializer
+    serializer_class = PropertyDataSerializer
     permission_classes = [AllowAny]
     pagination_class = PropertyPagination
 
@@ -48,3 +55,26 @@ class FilterView(APIView):
             'price_freqs': list(price_freqs),
             "locations":list(property_locations),
         })
+
+
+class PropertyDataPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+    
+
+class PropertyDataViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = PropertyData.objects.all()
+    serializer_class = PropertyDataSerializer
+    pagination_class = PropertyDataPagination
+
+    filter_backends = [
+        DjangoFilterBackend,
+        drf_filters.SearchFilter,
+        drf_filters.OrderingFilter,
+    ]
+    filterset_class = PropertyDataFilter
+    search_fields = ['reference', 'town', 'province', 'country', 'description']
+    ordering_fields = ['price', 'created_at', 'beds', 'baths', 'built_area', 'plot_area']
+    ordering = ['-created_at']
+

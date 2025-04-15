@@ -24,11 +24,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
+CLIENT_ID = config('CLIENT_ID')
+CLIENT_SECRET = config('CLIENT_SECRET')
+SCOPES = config('SCOPES')
+REDIRECT_URI = config('REDIRECT_URI')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '16.171.253.29']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '16.171.253.29','29f6-152-59-241-173.ngrok-free.app']
 
 
 # Application definition
@@ -53,7 +57,9 @@ INSTALLED_APPS = [
     'django_celery_beat',
     'accounts',
     'rest_framework',
+    'django_filters',
     'corsheaders',
+    'core',
 ]
 
 MIDDLEWARE = [
@@ -140,6 +146,10 @@ CELERY_BEAT_SCHEDULE = {
     'update-xml': {
         'task': 'accounts.tasks.import_properties_with_retry',
         'schedule': crontab(hour='*/24'),
+    },
+    'refresh_token': {
+        'task': 'core.tasks.refresh_token_task',
+        'schedule': crontab(hour='*/24'),
     }
 }
 
@@ -165,5 +175,8 @@ REST_FRAMEWORK = {
     # or allow read-only access for unauthenticated users.
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
-    ]
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend'
+    ],
 }
