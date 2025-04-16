@@ -23,7 +23,7 @@ class OAuthToken(models.Model):
     
 
 class Contact(models.Model):
-    id = models.CharField(max_length=50, primary_key=True)  # Contact ID from API
+    id = models.CharField(max_length=50, primary_key=True)
     first_name = models.CharField(max_length=100,null=True)
     last_name = models.CharField(max_length=100,null=True)
     email = models.EmailField(unique=True,blank=True,null=True)
@@ -51,3 +51,19 @@ class WebhookLog(models.Model):
 
     def __str__(self):
         return f"{self.webhook_id} : {self.received_at}"
+
+
+
+class CustomField(models.Model):
+    id = models.CharField(max_length=100, primary_key=True)
+    name = models.CharField(max_length=255)
+    model_name = models.CharField(max_length=50)
+    field_key = models.CharField(max_length=255)
+    placeholder = models.CharField(max_length=255, blank=True)
+    data_type = models.CharField(max_length=50)
+    parent_id = models.CharField(max_length=100)
+    location_id = models.CharField(max_length=100)
+    date_added = models.DateTimeField()
+
+    def __str__(self):
+        return self.name
