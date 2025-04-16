@@ -14,8 +14,9 @@ from rest_framework import viewsets, filters as drf_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
 from .models import PropertyData
-from .serializers import PropertyDataSerializer
+from .serializers import PropertyDataSerializer, ContactsSerializer
 from .filters import PropertyDataFilter
+from core.models import Contact
 
 
 class PropertiesView(ListAPIView):
@@ -58,7 +59,7 @@ class FilterView(APIView):
 
 
 class PropertyDataPagination(PageNumberPagination):
-    page_size = 10
+    page_size = 9
     page_size_query_param = 'page_size'
     max_page_size = 100
     
@@ -78,3 +79,11 @@ class PropertyDataViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['price', 'created_at', 'beds', 'baths', 'built_area', 'plot_area']
     ordering = ['-created_at']
 
+
+
+class ContactsView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request):
+        contacts = Contact.objects.all()
+        serializer = ContactsSerializer(contacts, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

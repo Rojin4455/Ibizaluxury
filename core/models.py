@@ -34,6 +34,13 @@ class Contact(models.Model):
     date_added = models.DateTimeField(default=now )  
     date_updated = models.DateTimeField(auto_now=True)  
     dnd = models.BooleanField(default=False)
+    min_price = models.CharField(max_length=200, null=True, blank=True)
+    max_price = models.CharField(max_length=200, null=True, blank=True)
+    province = models.CharField(max_length=50, null=True, blank=True)
+    price_freq = models.CharField(max_length=50, null=True, blank=True)
+    property_type = models.CharField(max_length=100, null=True, blank=True)
+    beds = models.IntegerField(null=True, blank=True)
+    baths = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.email})"

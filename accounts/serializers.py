@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import PropertyData
+from core.models import Contact
 
 class PropertyDataSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,3 +27,10 @@ class PropertyDataSerializer(serializers.ModelSerializer):
             'date',
             'created_at',
         ]
+
+
+
+class ContactsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contact
+        fields = "__all__"
