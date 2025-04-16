@@ -6,7 +6,7 @@ from django.conf import settings
 import requests 
 from datetime import datetime
 from .models import Contact, CustomField
-
+import json
 from django.contrib.contenttypes.models import ContentType
 from django.apps import apps
 
@@ -240,17 +240,15 @@ class CustomfieldServices:
             "Version": API_VERSION,
         }
 
-        if url:
-            response = requests.get(url, headers=headers)
-        else:
+       
         
-            url = f"{BASE_URL}/locations/{token_obj.LocationId}/customFields"
-            params = {
-                "model": model,
-            
-            }
+        url = f"{BASE_URL}/locations/{token_obj.LocationId}/customFields"
+        params = {
+            "model": model,
+        
+        }
            
-            response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers,params=params)
 
         if response.status_code == 200:
             return response.json()
@@ -261,11 +259,13 @@ class CustomfieldServices:
     
     @staticmethod
     def pull_customfields(model=None):
+
         response_data = CustomfieldServices.get_customfields(model)
         custom_fields = response_data.get("customFields", [])
         CustomfieldServices._save_customfields(custom_fields)
     
     def _save_customfields(fields):
+        print(json.dumps(fields))
         for field in fields:
             CustomField.objects.update_or_create(
                 id=field["id"],
@@ -280,3 +280,6 @@ class CustomfieldServices:
                     "date_added": datetime.fromisoformat(field["dateAdded"].replace("Z", "+00:00")),
                 }
             )
+    
+ 
+
