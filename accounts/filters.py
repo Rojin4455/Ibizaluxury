@@ -23,8 +23,9 @@ class PropertyDataFilter(filters.FilterSet):
         choices=[(town, town) for town in property_locations],
         conjoined=False,  # OR behavior between selected towns
     )
-    beds = filters.NumberFilter(field_name="beds", lookup_expr='exact') 
-    baths = filters.NumberFilter(field_name="baths", lookup_expr='exact') 
+    beds = filters.NumberFilter(method='filter_beds')
+    baths = filters.NumberFilter(method='filter_baths')
+
 
     class Meta:
         model = PropertyData
@@ -32,3 +33,12 @@ class PropertyDataFilter(filters.FilterSet):
             'property_type', 'price_min', 'price_max',
             'price_freq', 'town', 'beds', 'baths'
             ]
+    def filter_beds(self, queryset, name, value):
+        if value >= 4:
+            return queryset.filter(**{f"{name}__gte": value})
+        return queryset.filter(**{name: value})
+
+    def filter_baths(self, queryset, name, value):
+        if value >= 4:
+            return queryset.filter(**{f"{name}__gte": value})
+        return queryset.filter(**{name: value})
