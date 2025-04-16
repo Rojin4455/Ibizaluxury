@@ -9,6 +9,7 @@ from .models import Contact, CustomField
 import json
 from django.contrib.contenttypes.models import ContentType
 from django.apps import apps
+from core import helpers
 
 
 
@@ -179,8 +180,11 @@ class ContactServices:
         Bulk save contacts to the database.
         """
         unique_contacts = {contact["id"]: contact for contact in contacts}.values()  # Remove duplicates
-        contact_objects = [
-            Contact(
+        contact_objects = []
+        for contact in unique_contacts:
+            customfields = ContactServices.add_customfields(contact.get("customFields"),contact.get("locationId",""))
+            print("customfields",customfields)
+            contact_objects.append(Contact(
                 id=contact["id"],
                 first_name=contact.get("firstName", ""),
                 last_name=contact.get("lastName", ""),
@@ -192,15 +196,28 @@ class ContactServices:
                 date_added=datetime.fromisoformat(contact["dateAdded"].replace("Z", "+00:00")) if contact.get("dateAdded") else None,
                 date_updated=datetime.fromisoformat(contact["dateUpdated"].replace("Z", "+00:00")) if contact.get("dateUpdated") else None,
                 dnd=contact.get("dnd", False),
-            )
-            for contact in unique_contacts
-        ]
+                min_price = customfields.get("min_price",""),
+                max_price = customfields.get("max_price",""),
+                province = customfields.get("province",""),
+                price_freq = customfields.get("price_freq",""),
+                property_type = customfields.get("property_type",""),
+                beds = safe_int(customfields.get("beds")),
+                baths = safe_int(customfields.get("baths"))
+
+            ))
+        print(contact_objects)
+            
+        
 
         Contact.objects.bulk_create(
-            contact_objects,
-            update_conflicts=True,
-            unique_fields=["id"],
-            update_fields=["first_name", "last_name", "email", "country", "location_id", "type", "date_added", "date_updated", "dnd"],
+        contact_objects,
+        update_conflicts=True,
+        unique_fields=["id"],
+        update_fields=[
+            "first_name", "last_name", "email", "phone", "country", "location_id", "type",
+            "date_added", "date_updated", "dnd", "min_price", "max_price", "province",
+            "price_freq", "property_type", "beds", "baths"
+        ],
         )
 
         # ObjectCustomField = apps.get_model("custom_fields", "ObjectCustomField", require_ready=False)
@@ -224,7 +241,17 @@ class ContactServices:
         #             update_conflicts=True,
         #             unique_fields=["field_id", "object_id"],
         #             update_fields=["field_value"],
-        #         )
+        #)
+        
+    @staticmethod
+    def add_customfields( data, locatioId):
+        cf_dict={}
+        if data and locatioId:
+            for cf in data:
+                cf_obj = helpers.map_to_customfield(cf["id"],locatioId)
+                cf_dict[cf_obj.name.lower()]=cf["value"]
+        # print("added custom fields: ", cf_dict)     
+        return cf_dict
 
 class CustomfieldServices:
     
@@ -283,3 +310,8 @@ class CustomfieldServices:
     
  
 
+def safe_int(val):
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return None

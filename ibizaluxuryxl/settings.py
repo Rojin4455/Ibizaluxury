@@ -32,7 +32,7 @@ REDIRECT_URI = config('REDIRECT_URI')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '16.171.253.29','29f6-152-59-241-173.ngrok-free.app']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '16.171.253.29','7ae2-152-59-241-245.ngrok-free.app']
 
 
 # Application definition

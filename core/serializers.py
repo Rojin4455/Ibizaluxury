@@ -17,4 +17,11 @@ class ContactSerializer(serializers.ModelSerializer):
             "date_added",
             "date_updated",
             "dnd",
+            "min_price",
+            "max_price",
+            "province",
+            "price_freq",
+            "property_type",
+            "beds",
+            "baths",
         ]
