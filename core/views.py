@@ -69,10 +69,10 @@ class ContactWebhookView(APIView):
             self.delete_contact(contact_data)
         elif event_type == "ContactUpdate":
             self.update_contact(contact_data)
-        elif event_type == "ContactDndUpdate":
-            self.update_contact_dnd(contact_data)
-        elif event_type == "ContactTagUpdate":
-            self.update_contact_tags(contact_data)
+        # elif event_type == "ContactDndUpdate":
+        #     self.update_contact_dnd(contact_data)
+        # elif event_type == "ContactTagUpdate":
+        #     self.update_contact_tags(contact_data)
         # elif event_type == "NoteCreate":
         #     self.create_note(contact_data)
         # elif event_type == "NoteDelete":

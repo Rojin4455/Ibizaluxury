@@ -225,3 +225,43 @@ class ContactServices:
         #             unique_fields=["field_id", "object_id"],
         #             update_fields=["field_value"],
         #         )
+
+class CustomfieldServices:
+    
+    @staticmethod
+    def get_customfields(model="all"):
+        """
+        Fetch contacts from GoHighLevel API with given parameters.
+        """
+        token_obj = OAuthServices.get_valid_access_token_obj()
+        headers = {
+            "Authorization": f"Bearer {token_obj.access_token}",
+            "Content-Type": "application/json",
+            "Version": API_VERSION,
+        }
+
+        if url:
+            response = requests.get(url, headers=headers)
+        else:
+        
+            url = f"{BASE_URL}/locations/{token_obj.LocationId}/customFields"
+            params = {
+                "model": model,
+            
+            }
+           
+            response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise ContactServiceError(f"API request failed: {response.status_code}")
+
+
+    
+    @staticmethod
+    def pull_customfields(model=None):
+        respose_data = CustomfieldServices.get_customfields(model)
+    
+    def _save_customfields():
+        pass
