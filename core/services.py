@@ -5,7 +5,7 @@ from .models import OAuthToken
 from django.conf import settings
 import requests 
 from datetime import datetime
-from .models import Contact
+from .models import Contact, CustomField
 
 from django.contrib.contenttypes.models import ContentType
 from django.apps import apps
@@ -261,7 +261,22 @@ class CustomfieldServices:
     
     @staticmethod
     def pull_customfields(model=None):
-        respose_data = CustomfieldServices.get_customfields(model)
+        response_data = CustomfieldServices.get_customfields(model)
+        custom_fields = response_data.get("customFields", [])
+        CustomfieldServices._save_customfields(custom_fields)
     
-    def _save_customfields():
-        pass
+    def _save_customfields(fields):
+        for field in fields:
+            CustomField.objects.update_or_create(
+                id=field["id"],
+                defaults={
+                    "name": field["name"],
+                    "model_name": field["model"],
+                    "field_key": field["fieldKey"],
+                    "placeholder": field.get("placeholder", ""),
+                    "data_type": field["dataType"],
+                    "parent_id": field["parentId"],
+                    "location_id": field["locationId"],
+                    "date_added": datetime.fromisoformat(field["dateAdded"].replace("Z", "+00:00")),
+                }
+            )
