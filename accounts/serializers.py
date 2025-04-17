@@ -38,8 +38,8 @@ class ContactsSerializer(serializers.ModelSerializer):
         fields = "__all__"
         
 class XMLFeedSourceSerializer(serializers.ModelSerializer):
-    active = serializers.BooleanField(default=True)
-    
+    active = serializers.BooleanField(required=False)
+
     class Meta:
         model = XMLFeedLink
         fields = [
@@ -50,6 +50,12 @@ class XMLFeedSourceSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ("id", "created_at", "updated_at")
+
+
+    def create(self, validated_data):
+        validated_data["active"] = True
+        return super().create(validated_data)
+
     
     # def validate_url(self, value):
     #     # Try fetching the URL
