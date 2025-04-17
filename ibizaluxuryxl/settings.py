@@ -75,7 +75,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'ibizaluxuryxl.urls'
 
-CORS_ALLOWED_ORIGINS = ['http://localhost:3000']
+CORS_ALLOWED_ORIGINS = ['http://localhost:3000','https://main.d14rpk8xcrtyiz.amplifyapp.com']
 
 TEMPLATES = [
     {

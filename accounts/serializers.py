@@ -57,24 +57,23 @@ class XMLFeedSourceSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
     
-    # def validate_url(self, value):
-    #     # Try fetching the URL
-    #     try:
-    #         response = requests.get(value, timeout=10)
-    #         response.raise_for_status()  # Raise HTTP errors
+    def validate_url(self, value):
+        # Try fetching the URL
+        try:
+            response = requests.get(value, timeout=10)
+            response.raise_for_status()  # Raise HTTP errors
 
-    #         # Parse XML
-    #         root = ET.fromstring(response.content)
+            # Parse XML
+            root = ET.fromstring(response.content)
 
-    #         # Check if at least one <property> exists
-    #         if not root.findall(".//property"):
-    #             raise serializers.ValidationError(
-    #                 "The provided URL does not contain any <property> elements."
-    #             )
+            # Check if at least one <property> exists
+            if not root.findall(".//property"):
+                raise serializers.ValidationError(
+                    "The provided URL does not contain any <property> elements."
+                )
 
-    #     except (requests.RequestException, ET.ParseError) as e:
-    #         raise serializers.ValidationError(
-    #             f"Invalid or inaccessible XML feed URL: {str(e)}"
-    #         )
-
-    #     return value
+        except (requests.RequestException, ET.ParseError) as e:
+            raise serializers.ValidationError(
+                f"Invalid or inaccessible XML feed URL: {str(e)}"
+            )
+        return value
