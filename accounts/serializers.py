@@ -38,6 +38,8 @@ class ContactsSerializer(serializers.ModelSerializer):
         fields = "__all__"
         
 class XMLFeedSourceSerializer(serializers.ModelSerializer):
+    active = serializers.BooleanField(default=True)
+    
     class Meta:
         model = XMLFeedLink
         fields = [
