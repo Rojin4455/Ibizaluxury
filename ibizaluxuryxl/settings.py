@@ -32,7 +32,7 @@ REDIRECT_URI = config('REDIRECT_URI')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '13.60.92.185','fb06-2401-4900-8fdc-1237-a008-c625-89f-fd38.ngrok-free.app', 'api.cloudqonnect.com']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '13.60.92.185','fb06-2401-4900-8fdc-1237-a008-c625-89f-fd38.ngrok-free.app', 'api.cloudqonnect.com','80e5-152-59-241-188.ngrok-free.app']
 
 
 # Application definition

@@ -13,8 +13,11 @@ from django.db.models import F
 from rest_framework import viewsets, filters as drf_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
-from .models import PropertyData
-from .serializers import PropertyDataSerializer, ContactsSerializer
+from .models import PropertyData,XMLFeedLink
+from .serializers import (
+    PropertyDataSerializer, ContactsSerializer,
+    XMLFeedSourceSerializer
+    )
 from .filters import PropertyDataFilter
 from core.models import Contact
 
@@ -87,3 +90,9 @@ class ContactsView(APIView):
         contacts = Contact.objects.all()
         serializer = ContactsSerializer(contacts, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class XMLLinkSourceViewSet(viewsets.ModelViewSet):
+    queryset = XMLFeedLink.objects.all()
+    serializer_class = XMLFeedSourceSerializer
+    permission_classes = [AllowAny]

@@ -53,3 +53,13 @@ class PropertyData(models.Model):
 
     def __str__(self):
         return self.reference or f"Property {self.property_id}"
+
+
+class XMLFeedLink(models.Model):
+    url = models.URLField(unique=True)
+    active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.url

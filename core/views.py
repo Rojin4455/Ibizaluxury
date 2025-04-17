@@ -1,7 +1,7 @@
 from rest_framework import viewsets, filters
 from rest_framework.pagination import PageNumberPagination
 from .models import Contact, WebhookLog
-from .serializers import ContactSerializer
+
 import logging
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -27,13 +27,6 @@ class ContactPagination(PageNumberPagination):
 
 # Contact ViewSet
 
-class ContactViewSet(viewsets.ModelViewSet):
-    queryset = Contact.objects.all()
-    serializer_class = ContactSerializer
-    pagination_class = ContactPagination  
-
-    filter_backends = [filters.SearchFilter]
-    search_fields = ["first_name", "last_name", "email","id"]
 
 
 @method_decorator(csrf_exempt, name='dispatch')

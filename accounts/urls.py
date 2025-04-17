@@ -1,10 +1,11 @@
 from django.urls import path
-from accounts.views import PropertiesView,FilterView
+from accounts.views import PropertiesView,FilterView,XMLLinkSourceViewSet
 from rest_framework.routers import DefaultRouter
 from .views import PropertyDataViewSet, ContactsView
 
 router = DefaultRouter()
 router.register(r'properties', PropertyDataViewSet, basename='propertydata')
+router.register(r'xmlfeed', XMLLinkSourceViewSet, basename="xmlfeedsource")
 
 
 urlpatterns = [

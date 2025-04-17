@@ -1,9 +1,9 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ContactViewSet,ContactWebhookView
+from .views import ContactWebhookView
 
 router = DefaultRouter()
-router.register(r"contacts", ContactViewSet, basename="contact")
+
 
 
 urlpatterns = [
