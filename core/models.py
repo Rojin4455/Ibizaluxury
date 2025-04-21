@@ -53,6 +53,10 @@ class Contact(models.Model):
     property_type = models.CharField(max_length=100, null=True, blank=True)
     beds = models.IntegerField(null=True, blank=True)
     baths = models.IntegerField(null=True, blank=True)
+    properties = models.ManyToManyField('accounts.PropertyData', blank=True, related_name="contacts")
+    remarks = models.TextField(null=True, blank=True)
+    selec_url = models.URLField(null=True, blank=True)
+    
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.email})"

@@ -124,9 +124,9 @@ DATABASES = {
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    # },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
     },
@@ -202,7 +202,7 @@ REST_AUTH = {
     'USE_JWT': True,
     'SESSION_LOGIN': False,
     'LOGOUT_ON_PASSWORD_CHANGE': True,
-
+    # 'JWT_AUTH_HTTPONLY' : False  
 }
 
 SIMPLE_JWT = {

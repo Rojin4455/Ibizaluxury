@@ -16,7 +16,7 @@ from rest_framework.pagination import PageNumberPagination
 from .models import PropertyData,XMLFeedLink
 from .serializers import (
     PropertyDataSerializer, ContactsSerializer,
-    XMLFeedSourceSerializer
+    XMLFeedSourceSerializer, ContactSelectionSerializer
     )
 from .filters import PropertyDataFilter
 from core.models import Contact
@@ -101,11 +101,21 @@ class PropertyDataViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ContactsView(APIView):
     permission_classes = [AllowAny]
+    
+    def get_serializer_class(self, selection=False):
+        if selection:
+            return ContactSelectionSerializer
+        return ContactsSerializer
+    
     def get(self, request, id=None):
+        
+        selection = request.query_params.get('selection', 'false').lower() in ['true', '1', 'yes']
+        serializer_class = self.get_serializer_class(selection)
+        
         if id:
             try:
                 contact = Contact.objects.get(id=id)
-                serializer = ContactsSerializer(contact)
+                serializer = serializer_class(contact)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Contact.DoesNotExist:
                 return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -114,6 +124,20 @@ class ContactsView(APIView):
             serializer = ContactsSerializer(contacts, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
+    def put(self, request, id=None):
+        if not id:
+            return Response({"detail": "ID is required for update"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            contact = Contact.objects.get(id=id)
+        except Contact.DoesNotExist:
+            return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = ContactSelectionSerializer(contact, data=request.data, partial=True)
+
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
 class XMLLinkSourceViewSet(viewsets.ModelViewSet):
     queryset = XMLFeedLink.objects.all()

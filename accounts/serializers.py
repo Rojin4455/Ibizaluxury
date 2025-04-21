@@ -35,7 +35,22 @@ class PropertyDataSerializer(serializers.ModelSerializer):
 class ContactsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
-        fields = "__all__"
+        # fields = "__all__"
+        exclude = ['properties', 'remarks', 'selec_url'] 
+        
+class ContactSelectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contact
+        fields = ['id','location_id','properties', 'remarks', 'selec_url']
+    
+    def update(self, instance, validated_data):
+        allowed_fields = {'properties', 'remarks', 'selec_url'}
+        input_fields = set(validated_data.keys())
+
+        if not input_fields.issubset(allowed_fields):
+            raise serializers.ValidationError("Only properties, remarks, and selec_url can be updated.")
+        
+        return super().update(instance, validated_data)
         
 class XMLFeedSourceSerializer(serializers.ModelSerializer):
     active = serializers.BooleanField(required=False)
