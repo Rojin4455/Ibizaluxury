@@ -101,13 +101,28 @@ class PropertyDataViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ContactsView(APIView):
     permission_classes = [AllowAny]
-    def get(self, request):
-        contacts = Contact.objects.all()
-        serializer = ContactsSerializer(contacts, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    def get(self, request, id=None):
+        if id:
+            try:
+                contact = Contact.objects.get(id=id)
+                serializer = ContactsSerializer(contact)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Contact.DoesNotExist:
+                return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            contacts = Contact.objects.all()
+            serializer = ContactsSerializer(contacts, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class XMLLinkSourceViewSet(viewsets.ModelViewSet):
     queryset = XMLFeedLink.objects.all()
     serializer_class = XMLFeedSourceSerializer
     permission_classes = [AllowAny]
+
+
+class EmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        request.get("")
