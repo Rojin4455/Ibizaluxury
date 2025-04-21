@@ -20,13 +20,28 @@ from .serializers import (
     )
 from .filters import PropertyDataFilter
 from core.models import Contact
+from django.db.models import Q
+
 
 
 class PropertiesView(ListAPIView):
-    queryset = PropertyData.objects.all().order_by('-id')
     serializer_class = PropertyDataSerializer
     permission_classes = [AllowAny]
     pagination_class = PropertyPagination
+
+    def get_queryset(self):
+        queryset = PropertyData.objects.all().order_by('-id')
+        search_val = self.request.query_params.get('search', None)
+
+        if search_val:
+            queryset = queryset.filter(
+                Q(town__icontains=search_val) |
+                Q(features__icontains=search_val) |
+                Q(beds__icontains=search_val) |
+                Q(baths__icontains=search_val)
+            )
+
+        return queryset
 
 
 class FilterView(APIView):
