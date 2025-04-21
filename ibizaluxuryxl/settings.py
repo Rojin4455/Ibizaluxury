@@ -61,6 +61,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'dj_rest_auth',
+    'rest_framework_simplejwt.token_blacklist',
+
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -196,21 +198,37 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
 }
+
+
 REST_USE_JWT = True
 
 REST_AUTH = {
     'USE_JWT': True,
-    'SESSION_LOGIN': False,
-    'LOGOUT_ON_PASSWORD_CHANGE': True,
-    # 'JWT_AUTH_HTTPONLY' : False  
+    'JWT_AUTH_COOKIE': 'access',
+    'JWT_AUTH_REFRESH_COOKIE': 'refresh',
+    'JWT_AUTH_COOKIE_SECURE': True,  # Set to False in development, True in production
+    'JWT_AUTH_COOKIE_HTTPONLY': True,  # This prevents JavaScript from accessing the cookie
+    'JWT_AUTH_COOKIE_SAMESITE': 'Lax',  # Or 'None' for cross-site requests with credentials
 }
 
+# For session-based auth, configure session settings
+SESSION_COOKIE_SECURE = True  # Set to False in development, True in production
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+
+
+
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'ROTATE_REFRESH_TOKENS': True,
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
+
+CORS_ALLOW_CREDENTIALS = True
+
 # AUTH_USER_MODEL = 'core.User'
 
 # ACCOUNT_USER_MODEL_USERNAME_FIELD = None
