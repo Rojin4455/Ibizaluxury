@@ -5,6 +5,7 @@ from core.services import ContactServices
 import requests
 import xml.etree.ElementTree as ET
 
+
 class PropertyDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = PropertyData
@@ -124,3 +125,5 @@ class XMLFeedSourceSerializer(serializers.ModelSerializer):
                 f"Invalid or inaccessible XML feed URL: {str(e)}"
             )
         return value
+    
+
