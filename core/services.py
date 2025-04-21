@@ -147,6 +147,25 @@ class ContactServices:
         else:
             raise ContactServiceError(f"API request failed: {response.status_code}")
 
+    @staticmethod
+    def push_contact(contact_obj :Contact, data):
+        token_obj = OAuthServices.get_valid_access_token_obj(contact_obj.location_id)
+        headers = {
+            "Authorization": f"Bearer {token_obj.access_token}",
+            "Content-Type": "application/json",
+            "Version": API_VERSION,
+        }
+
+        url = f"{BASE_URL}/contacts/{contact_obj.id}"
+      
+
+        response = requests.put(url, headers=headers, json=data)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise ContactServiceError(f"API request failed: {response.status_code}")
+
     
     @staticmethod
     def pull_contacts(query=None):

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import PropertyData,XMLFeedLink
-from core.models import Contact
+from core.models import Contact, CustomField
+from core.services import ContactServices
 import requests
 import xml.etree.ElementTree as ET
 
@@ -49,6 +50,23 @@ class ContactSelectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
         fields = ['id', 'location_id', 'properties', 'properties_detail', 'remarks', 'selec_url']
+    
+    def ghl_update(self, instance: Contact):
+        urlfield = CustomField.objects.get(field_key='contact.app_preview_url',location_id=instance.location_id)
+        remarkfield = CustomField.objects.get(field_key='contact.app_remarks',location_id=instance.location_id)
+        payload={
+            "customFields": [
+                {
+                "id": urlfield.id,
+                "field_value": instance.selec_url
+                },
+                {
+                    "id":remarkfield.id,
+                    "field_value": instance.remarks
+                }
+            ],
+        }
+        ContactServices.push_contact(instance, data=payload)
 
     def update(self, instance, validated_data):
         allowed_fields = {'properties', 'remarks', 'selec_url'}
@@ -61,8 +79,9 @@ class ContactSelectionSerializer(serializers.ModelSerializer):
         properties = validated_data.pop('properties', None)
         if properties is not None:
             instance.properties.set(properties)
-
-        return super().update(instance, validated_data)
+        obj = super().update(instance, validated_data)
+        self.ghl_update(obj)
+        return obj
 
         
 class XMLFeedSourceSerializer(serializers.ModelSerializer):
