@@ -148,5 +148,10 @@ class XMLLinkSourceViewSet(viewsets.ModelViewSet):
 class EmailView(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request):
-        request.get("")
+    def post(self, request):
+        message = request.data.get("message")
+        message = request.data.get("selecdedProps")
+        
+        print("message", message)
+        return Response()
+
