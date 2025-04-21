@@ -23,7 +23,7 @@ class OAuthToken(models.Model):
     scope = models.TextField()
     userType = models.CharField(max_length=100)
     companyId = models.CharField(max_length=100)
-    LocationId = models.CharField(max_length=100)
+    LocationId = models.CharField(max_length=100,unique=True)
     userId = models.CharField(max_length=100)
     
     def is_expired(self):
@@ -31,7 +31,7 @@ class OAuthToken(models.Model):
         return now().date() >= self.expires_at
     
     def __str__(self):
-        return f"{self.LocationId}"
+        return f"{self.LocationId} - {self.token_type}"
     
 
 class Contact(models.Model):

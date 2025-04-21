@@ -24,15 +24,15 @@ class OAuthTokenError(Exception):
 class OAuthServices:
     
     @staticmethod
-    def get_valid_access_token_obj():
+    def get_valid_access_token_obj(location_id):
        
         from django.conf import settings
-        token_obj = OAuthToken.objects.first()  # Assuming one OAuth record, change if one per user
+        token_obj = OAuthToken.objects.get(LocationId=location_id)  # Assuming one OAuth record, change if one per user
         if not token_obj:
             raise OAuthTokenError("OAuth token not found. Please authenticate first")
         
         if token_obj.is_expired():
-            OAuthServices.refresh_access_token()
+            token_obj = OAuthServices.refresh_access_token(location_id)
             
         return token_obj
     
@@ -77,12 +77,12 @@ class OAuthServices:
     
     
     @staticmethod
-    def refresh_access_token():
+    def refresh_access_token(location_id):
         """
         Refresh the access token using the refresh token.
         """
         
-        token_obj = OAuthToken.objects.first()
+        token_obj = OAuthToken.objects.get(LocationId=location_id)
         payload = {
             'grant_type': 'refresh_token',
             'client_id': settings.CLIENT_ID,
@@ -105,7 +105,7 @@ class OAuthServices:
         token_obj.scope = new_tokens.get("scope")
         token_obj.userType = new_tokens.get("userType")
         token_obj.companyId = new_tokens.get("companyId")
-        token_obj.LocationId = new_tokens.get("locationId")
+        # token_obj.LocationId = new_tokens.get("locationId")
         token_obj.userId = new_tokens.get("userId")
 
         token_obj.save()
@@ -119,11 +119,11 @@ class ContactServiceError(Exception):
 class ContactServices:
     
     @staticmethod
-    def get_contacts(query=None, url=None, limit=LIMIT_PER_PAGE):
+    def get_contacts(location_id,query=None, url=None, limit=LIMIT_PER_PAGE):
         """
         Fetch contacts from GoHighLevel API with given parameters.
         """
-        token_obj = OAuthServices.get_valid_access_token_obj()
+        token_obj = OAuthServices.get_valid_access_token_obj(location_id)
         headers = {
             "Authorization": f"Bearer {token_obj.access_token}",
             "Content-Type": "application/json",
@@ -153,25 +153,30 @@ class ContactServices:
         """
         Fetch all contacts using nextPageURL-based pagination and save them to the database.
         """
-        all_contacts = []
-        url = None
-        i = 0
+        imported_contacts_summary = []
+        location_ids = list(OAuthToken.objects.values_list('LocationId', flat=True))
+        for location_id in location_ids:
+            tokenobj :OAuthToken = OAuthServices.get_valid_access_token_obj(location_id)
+            all_contacts = []
+            url = None
+            i = 0
 
-        while True:
-            response_data = ContactServices.get_contacts(query=query, url=url)
-            contacts = response_data.get("contacts", [])
-            all_contacts.extend(contacts)
+            while True:
+                response_data = ContactServices.get_contacts(location_id=tokenobj.LocationId,query=query, url=url)
+                contacts = response_data.get("contacts", [])
+                all_contacts.extend(contacts)
 
-            print(contacts)
-            print(len(all_contacts), i, end='\n\n')
-            if not response_data.get("meta", {}).get("nextPageURL"):
-                break  # No next page
+                print(contacts)
+                print(len(all_contacts), i, end='\n\n')
+                if not response_data.get("meta", {}).get("nextPageURL"):
+                    break  # No next page
 
-            url = response_data["meta"]["nextPageURL"]
-            i += 1
+                url = response_data["meta"]["nextPageURL"]
+                i += 1
 
-        ContactServices._save_contacts(all_contacts)
-        return f"Imported {len(all_contacts)} contacts"
+            ContactServices._save_contacts(all_contacts)
+            imported_contacts_summary.append(f"{location_id}: Imported {len(all_contacts)} contacts")
+        return imported_contacts_summary
         
 
     @staticmethod
@@ -254,45 +259,55 @@ class ContactServices:
         return cf_dict
 
 class CustomfieldServices:
-    
+
     @staticmethod
-    def get_customfields(model="all"):
+    def get_customfields(location_id, model="all"):
         """
-        Fetch contacts from GoHighLevel API with given parameters.
+        Fetch custom fields from GoHighLevel API for a specific location_id.
         """
-        token_obj = OAuthServices.get_valid_access_token_obj()
+        token_obj = OAuthServices.get_valid_access_token_obj(location_id)
         headers = {
             "Authorization": f"Bearer {token_obj.access_token}",
             "Content-Type": "application/json",
             "Version": API_VERSION,
         }
 
-       
-        
         url = f"{BASE_URL}/locations/{token_obj.LocationId}/customFields"
         params = {
             "model": model,
-        
         }
-           
-        response = requests.get(url, headers=headers,params=params)
+
+        response = requests.get(url, headers=headers, params=params)
 
         if response.status_code == 200:
             return response.json()
         else:
             raise ContactServiceError(f"API request failed: {response.status_code}")
 
-
-    
     @staticmethod
     def pull_customfields(model=None):
+        """
+        Pull custom fields for all locations and save them.
+        """
+        location_ids = OAuthToken.objects.values_list('LocationId', flat=True)
+        import_summary = []
 
-        response_data = CustomfieldServices.get_customfields(model)
-        custom_fields = response_data.get("customFields", [])
-        CustomfieldServices._save_customfields(custom_fields)
-    
+        for location_id in location_ids:
+            try:
+                response_data = CustomfieldServices.get_customfields(location_id=location_id, model=model)
+                custom_fields = response_data.get("customFields", [])
+                CustomfieldServices._save_customfields(custom_fields)
+                import_summary.append(f"{location_id}: Imported {len(custom_fields)} custom fields")
+            except ContactServiceError as e:
+                import_summary.append(f"{location_id}: Failed to import custom fields - {str(e)}")
+
+        return import_summary
+
+    @staticmethod
     def _save_customfields(fields):
-        print(json.dumps(fields))
+        """
+        Save or update custom fields in the database.
+        """
         for field in fields:
             CustomField.objects.update_or_create(
                 id=field["id"],
@@ -307,8 +322,7 @@ class CustomfieldServices:
                     "date_added": datetime.fromisoformat(field["dateAdded"].replace("Z", "+00:00")),
                 }
             )
-    
- 
+
 
 def safe_int(val):
     try:
