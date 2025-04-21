@@ -125,6 +125,7 @@ class ContactsView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request, id=None):
+        
         if not id:
             return Response({"detail": "ID is required for update"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -151,7 +152,7 @@ class EmailView(APIView):
     def post(self, request):
         message = request.data.get("message")
         message = request.data.get("selecdedProps")
-        
+
         print("message", message)
         return Response()
 
