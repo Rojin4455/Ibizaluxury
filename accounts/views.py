@@ -288,46 +288,46 @@ class PropertyDataViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 
-class ContactsView(APIView):
-    permission_classes = [AllowAny]
+# class ContactsView(APIView):
+#     permission_classes = [AllowAny]
     
-    def get_serializer_class(self, selection=False):
-        if selection:
-            return ContactSelectionSerializer
-        return ContactsSerializer
+#     def get_serializer_class(self, selection=False):
+#         if selection:
+#             return ContactSelectionSerializer
+#         return ContactsSerializer
     
-    def get(self, request, id=None):
+#     def get(self, request, id=None):
         
-        selection = request.query_params.get('selection', 'false').lower() in ['true', '1', 'yes']
-        serializer_class = self.get_serializer_class(selection)
+#         selection = request.query_params.get('selection', 'false').lower() in ['true', '1', 'yes']
+#         serializer_class = self.get_serializer_class(selection)
         
-        if id:
-            try:
-                contact = Contact.objects.get(id=id)
-                serializer = serializer_class(contact)
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            except Contact.DoesNotExist:
-                return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
-        else:
-            contacts = Contact.objects.filter(location_id="ttQIDuvyngILWMJ5wABA")
-            serializer = ContactsSerializer(contacts, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+#         if id:
+#             try:
+#                 contact = Contact.objects.get(id=id)
+#                 serializer = serializer_class(contact)
+#                 return Response(serializer.data, status=status.HTTP_200_OK)
+#             except Contact.DoesNotExist:
+#                 return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
+#         else:
+#             contacts = Contact.objects.filter(location_id="ttQIDuvyngILWMJ5wABA")
+#             serializer = ContactsSerializer(contacts, many=True)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def put(self, request, id=None):
+#     def put(self, request, id=None):
         
-        if not id:
-            return Response({"detail": "ID is required for update"}, status=status.HTTP_400_BAD_REQUEST)
+#         if not id:
+#             return Response({"detail": "ID is required for update"}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            contact = Contact.objects.get(id=id)
-        except Contact.DoesNotExist:
-            return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
+#         try:
+#             contact = Contact.objects.get(id=id)
+#         except Contact.DoesNotExist:
+#             return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = ContactSelectionSerializer(contact, data=request.data, partial=True)
+#         serializer = ContactSelectionSerializer(contact, data=request.data, partial=True)
 
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+#         if serializer.is_valid(raise_exception=True):
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_200_OK)
 
 class XMLLinkSourceViewSet(viewsets.ModelViewSet):
     queryset = XMLFeedLink.objects.all()
