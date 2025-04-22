@@ -122,7 +122,7 @@ class ContactsView(APIView):
             except Contact.DoesNotExist:
                 return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
         else:
-            contacts = Contact.objects.all()
+            contacts = Contact.objects.filter(location_id="ttQIDuvyngILWMJ5wABA")
             serializer = ContactsSerializer(contacts, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -168,11 +168,12 @@ class CompanyView(APIView):
                 token = OAuthToken.objects.get(locationId=locationId)
                 data = {
                     "companyId": token.companyId,
-                    "companyName": token.company_name
+                    "companyName": token.company_name,
+                    "locationId": token.LocationId
                 }
                 return Response(data, status=status.HTTP_200_OK)
             except OAuthToken.DoesNotExist:
                 return Response({"detail": "Token not found"}, status=status.HTTP_404_NOT_FOUND)
         else:
-            tokens = OAuthToken.objects.all().values("companyId", "company_name")
+            tokens = OAuthToken.objects.all().values("companyId", "company_name","LocationId")
             return Response(list(tokens), status=status.HTTP_200_OK)
