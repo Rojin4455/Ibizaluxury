@@ -18,11 +18,12 @@ from django.contrib.auth.models import AbstractUser
 class OAuthToken(models.Model):
     access_token = models.TextField()
     token_type = models.CharField(max_length=100, default="Brearer")
-    expires_at = models.DateField() #save this from expires_in
+    expires_at = models.DateField()
     refresh_token = models.TextField()
     scope = models.TextField()
     userType = models.CharField(max_length=100)
     companyId = models.CharField(max_length=100)
+    company_name = models.CharField(max_length=200, null=True, blank=True)
     LocationId = models.CharField(max_length=100,unique=True)
     userId = models.CharField(max_length=100)
     

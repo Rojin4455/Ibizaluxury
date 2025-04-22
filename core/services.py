@@ -54,8 +54,11 @@ class OAuthServices:
         # print(payload)
         response =requests.post(TOKEN_URL,headers=headers,data=payload)
         token_data = response.json()
+
         
         if response.status_code == 200:
+            company_data = fetch_company_data(token_data['access_token'], token_data['locationId'])
+            print("company data:",company_data)
             print("success response")
             token_obj, created = OAuthToken.objects.update_or_create(
                 LocationId=token_data["locationId"],
@@ -68,6 +71,7 @@ class OAuthServices:
                     "userType": token_data["userType"],
                     "companyId": token_data["companyId"],
                     "userId": token_data["userId"],
+                    "company_name":company_data["name"],
                 }
             )
             return token_obj
@@ -348,3 +352,39 @@ def safe_int(val):
         return int(val)
     except (TypeError, ValueError):
         return None
+    
+
+
+def fetch_company_data(token, locationID):
+    url = f"https://services.leadconnectorhq.com/companies/{locationID}"
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {token}",
+        "Version": "2021-07-28"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Failed to fetch company data. Status code: {response.status_code}")
+        print(f"Response: {response.text}")
+        return None
+    
+token = OAuthToken.objects.first()
+url = f"https://services.leadconnectorhq.com/companies/{token.LocationId}"
+headers = {
+    "Accept": "application/json",
+    "Authorization": f"Bearer {token.access_token}",
+    "Version": "2021-07-28"
+}
+
+response = requests.get(url, headers=headers)
+
+if response.status_code == 200:
+    print(response.json())
+else:
+    print(f"Failed to fetch company data. Status code: {response.status_code}")
+    print(f"Response: {response.text}")
+    print(None)
