@@ -18,7 +18,7 @@ from .serializers import (
     PropertyDataSerializer, ContactsSerializer,
     XMLFeedSourceSerializer, ContactSelectionSerializer
     )
-from .filters import PropertyDataFilter
+from .filters import PropertyDataFilter, ContactFilter
 from core.models import Contact
 from django.db.models import Q
 
@@ -103,11 +103,18 @@ class PropertyDataViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ContactsView(APIView):
     permission_classes = [AllowAny]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ContactFilter
     
     def get_serializer_class(self, selection=False):
         if selection:
             return ContactSelectionSerializer
         return ContactsSerializer
+    
+    def filter_queryset(self, request, queryset):
+        for backend in list(self.filter_backends):
+            queryset = backend().filter_queryset(request, queryset, self)
+        return queryset
     
     def get(self, request, id=None):
         
@@ -123,6 +130,7 @@ class ContactsView(APIView):
                 return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
         else:
             contacts = Contact.objects.all()
+            contacts = self.filter_queryset(request, contacts)
             serializer = ContactsSerializer(contacts, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
 

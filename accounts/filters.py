@@ -1,6 +1,7 @@
 from django_filters import rest_framework as filters
 import django_filters
 from .models import PropertyData
+from core.models import Contact
 
 property_locations = (
     PropertyData.objects
@@ -42,3 +43,14 @@ class PropertyDataFilter(filters.FilterSet):
         if value >= 4:
             return queryset.filter(**{f"{name}__gte": value})
         return queryset.filter(**{name: value})
+
+
+
+class ContactFilter(filters.FilterSet):
+
+    location_id = filters.CharFilter(lookup_expr='exact')
+
+
+    class Meta:
+        model = Contact
+        fields = [ 'location_id']
