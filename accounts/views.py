@@ -115,7 +115,7 @@ class ContactsView(APIView):
         for backend in list(self.filter_backends):
             queryset = backend().filter_queryset(request, queryset, self)
         return queryset
-    
+
     def get(self, request, id=None):
         
         selection = request.query_params.get('selection', 'false').lower() in ['true', '1', 'yes']
