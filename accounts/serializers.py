@@ -62,8 +62,8 @@ class ContactSelectionSerializer(serializers.ModelSerializer):
                 "field_value": instance.selec_url
                 },
                 {
-                    "id":remarkfield.id,
-                    "field_value": instance.remarks
+                "id":remarkfield.id,
+                "field_value": instance.remarks
                 }
             ],
         }
