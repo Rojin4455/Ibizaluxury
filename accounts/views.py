@@ -22,6 +22,8 @@ from .filters import PropertyDataFilter
 from core.models import Contact
 from django.db.models import Q
 
+from core.models import OAuthToken
+
 
 
 class PropertiesView(ListAPIView):
@@ -156,3 +158,21 @@ class EmailView(APIView):
         print("message", message)
         return Response()
 
+
+
+class CompanyView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, locationId=None):
+        if locationId:
+            try:
+                token = OAuthToken.objects.get(locationId=locationId)
+                data = {
+                    "companyId": token.companyId,
+                    "companyName": token.company_name
+                }
+                return Response(data, status=status.HTTP_200_OK)
+            except OAuthToken.DoesNotExist:
+                return Response({"detail": "Token not found"}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            tokens = OAuthToken.objects.all().values("companyId", "company_name")
+            return Response(list(tokens), status=status.HTTP_200_OK)
