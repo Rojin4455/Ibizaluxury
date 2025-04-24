@@ -1,7 +1,7 @@
 from django.urls import path
 from accounts.views import PropertiesView,FilterView,XMLLinkSourceViewSet
 from rest_framework.routers import DefaultRouter
-from .views import PropertyDataViewSet, ContactsView, EmailView, CompanyView
+from .views import PropertyDataViewSet, ContactsView, EmailView, CompanyView, RefreshFeedView, SubAccountsView
 
 router = DefaultRouter()
 router.register(r'properties', PropertyDataViewSet, basename='propertydata')
@@ -16,6 +16,8 @@ urlpatterns = [
     path('send-email/', EmailView.as_view(), name='email-view'),
     path('get-company-names/', CompanyView.as_view(), name='get-company-name'),
     path('get-company-name/<str:locationId>/', CompanyView.as_view(), name='get-company-name'),
+    path('refresh-feed/<int:id>/', RefreshFeedView.as_view()),
+    path('fetch-accounts/', SubAccountsView.as_view())
     
 
 ]+router.urls

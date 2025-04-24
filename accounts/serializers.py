@@ -43,7 +43,7 @@ class ContactsSerializer(serializers.ModelSerializer):
 class ContactSelectionSerializer(serializers.ModelSerializer):
     properties_detail = PropertyDataSerializer(source="properties", many=True, read_only=True)
     properties = serializers.PrimaryKeyRelatedField(
-        queryset=PropertyData.objects.all(),
+        queryset=PropertyData.objects.filter(xml_url__active=True),
         many=True,
         write_only=True
     )
@@ -108,7 +108,7 @@ class XMLFeedSourceSerializer(serializers.ModelSerializer):
     def validate_url(self, value):
         # Try fetching the URL
         try:
-            response = requests.get(value, timeout=10)
+            response = requests.get(value)
             response.raise_for_status()  # Raise HTTP errors
 
             # Parse XML

@@ -24,6 +24,8 @@ from django.db.models import Q
 
 from core.models import OAuthToken
 
+from accounts.helpers import refresh_xml_feed
+
 
 
 class PropertiesView(ListAPIView):
@@ -32,7 +34,7 @@ class PropertiesView(ListAPIView):
     pagination_class = PropertyPagination
 
     def get_queryset(self):
-        queryset = PropertyData.objects.all().order_by('-id')
+        queryset = PropertyData.objects.filter(xml_url__active=True).order_by('-id')
         search_val = self.request.query_params.get('search', None)
 
         if search_val:
@@ -85,7 +87,7 @@ class PropertyDataPagination(PageNumberPagination):
     
 
 class PropertyDataViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = PropertyData.objects.all()
+    queryset = PropertyData.objects.filter(xml_url__active=True)
     serializer_class = PropertyDataSerializer
     pagination_class = PropertyDataPagination
 
@@ -219,7 +221,7 @@ class PropertiesView(ListAPIView):
     pagination_class = PropertyPagination
 
     def get_queryset(self):
-        queryset = PropertyData.objects.all().order_by('-id')
+        queryset = PropertyData.objects.filter(xml_url__active=True).order_by('-id')
         search_val = self.request.query_params.get('search', None)
 
         if search_val:
@@ -235,33 +237,39 @@ class PropertiesView(ListAPIView):
 
 class FilterView(APIView):
     permission_classes = [AllowAny]
+
     def get(self, request):
-        min_price = PropertyData.objects.aggregate(min_price=Min('price'))['min_price']
-        max_price = PropertyData.objects.aggregate(max_price=Max('price'))['max_price']
+        queryset = PropertyData.objects.filter(xml_url__active=True)
+
+        min_price = queryset.aggregate(min_price=Min('price'))['min_price']
+        max_price = queryset.aggregate(max_price=Max('price'))['max_price']
+
         property_types = (
-            PropertyData.objects
+            queryset
             .order_by()
             .values_list('property_type', flat=True)
             .distinct()
             .exclude(property_type__isnull=True)
             .exclude(property_type="")
-        )        
+        )
+
         property_locations = (
-            PropertyData.objects
+            queryset
             .order_by()
             .values_list('town', flat=True)
             .distinct()
             .exclude(town__isnull=True)
             .exclude(town="")
-        ) 
-        price_freqs = PropertyData.objects.order_by().values_list('price_freq', flat=True).distinct()
+        )
+
+        price_freqs = queryset.order_by().values_list('price_freq', flat=True).distinct()
 
         return Response({
             'min_price': min_price,
             'max_price': max_price,
             'property_types': list(property_types),
             'price_freqs': list(price_freqs),
-            "locations":list(property_locations),
+            'locations': list(property_locations),
         })
 
 
@@ -272,7 +280,7 @@ class PropertyDataPagination(PageNumberPagination):
     
 
 class PropertyDataViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = PropertyData.objects.all()
+    queryset = PropertyData.objects.filter(xml_url__active=True)
     serializer_class = PropertyDataSerializer
     pagination_class = PropertyDataPagination
 
@@ -332,7 +340,7 @@ class PropertyDataViewSet(viewsets.ReadOnlyModelViewSet):
 class XMLLinkSourceViewSet(viewsets.ModelViewSet):
     queryset = XMLFeedLink.objects.all()
     serializer_class = XMLFeedSourceSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
 
 class EmailView(APIView):
@@ -364,3 +372,30 @@ class CompanyView(APIView):
         else:
             tokens = OAuthToken.objects.all().values("companyId", "company_name","LocationId")
             return Response(list(tokens), status=status.HTTP_200_OK)
+
+
+
+class RefreshFeedView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id):
+        try:
+            xml_feed = XMLFeedLink.objects.get(id=id)
+            refresh_xml_feed(xml_feed.url)
+            return Response({"detail": "Feed refreshed successfully."}, status=status.HTTP_200_OK)
+        except XMLFeedLink.DoesNotExist:
+            return Response({"detail": "Feed not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"detail": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class SubAccountsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        all_accounts = OAuthToken.objects.all().values("companyId", "company_name", "LocationId")
+        return Response({
+            "status": "success",
+            "count": all_accounts.count(),
+            "sub_accounts": list(all_accounts)
+        })

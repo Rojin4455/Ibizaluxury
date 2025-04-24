@@ -23,7 +23,19 @@ class Property(models.Model):
 
     def __str__(self):
         return self.reference or f"Property {self.property_id}"
+
+
+
+class XMLFeedLink(models.Model):
+    url = models.URLField(unique=True)
+    active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.url
     
+
 
 class PropertyData(models.Model):
     property_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
@@ -45,6 +57,7 @@ class PropertyData(models.Model):
     images = models.JSONField(null=True, blank=True)
     date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    xml_url = models.ForeignKey(XMLFeedLink, on_delete=models.CASCADE, related_name='xmlfeedlink', null=True, blank=True)
 
 
     class Meta:
@@ -54,13 +67,3 @@ class PropertyData(models.Model):
     def __str__(self):
         return self.reference or f"Property {self.property_id}"
 
-
-class XMLFeedLink(models.Model):
-    url = models.URLField(unique=True)
-    active = models.BooleanField(default=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.url
-    
