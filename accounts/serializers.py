@@ -30,6 +30,7 @@ class PropertyDataSerializer(serializers.ModelSerializer):
             'images',
             'date',
             'created_at',
+            'xml_url',
         ]
 
 

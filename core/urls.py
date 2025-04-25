@@ -8,5 +8,5 @@ router = DefaultRouter()
 
 urlpatterns = [
     path("contacts/webhook",ContactWebhookView.as_view(),name ="contact-webhook"),
-    path("", include(router.urls)),  
+    path("", include(router.urls)),
 ]

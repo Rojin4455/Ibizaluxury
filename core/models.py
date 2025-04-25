@@ -69,8 +69,6 @@ class WebhookLog(models.Model):
     def __str__(self):
         return f"{self.webhook_id} : {self.received_at}"
 
-
-
 class CustomField(models.Model):
     id = models.CharField(max_length=100, primary_key=True)
     name = models.CharField(max_length=255)
