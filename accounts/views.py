@@ -16,7 +16,7 @@ from rest_framework.pagination import PageNumberPagination
 from .models import PropertyData,XMLFeedLink
 from .serializers import (
     PropertyDataSerializer, ContactsSerializer,
-    XMLFeedSourceSerializer, ContactSelectionSerializer
+    XMLFeedSourceSerializer, ContactSelectionSerializer, XMLFeedSubaccountUpdateSerializer
     )
 from .filters import PropertyDataFilter, ContactFilter
 from core.models import Contact
@@ -35,7 +35,13 @@ class PropertiesView(ListAPIView):
 
     def get_queryset(self):
         queryset = PropertyData.objects.filter(xml_url__active=True).order_by('-id')
+
+        # Get search value if present
         search_val = self.request.query_params.get('search', None)
+        access_level = self.request.query_params.get('accessLevel', 'restricted')  # Default is 'restricted'
+        location_id = self.request.query_params.get('locationId', None)
+        print("access level: ", access_level)
+        print("location:", location_id)
 
         if search_val:
             queryset = queryset.filter(
@@ -44,6 +50,20 @@ class PropertiesView(ListAPIView):
                 Q(beds__icontains=search_val) |
                 Q(baths__icontains=search_val)
             )
+
+        # Check if access level is 'restricted' and locationId is provided
+        if access_level == 'restricted' and location_id:
+            # Filter properties based on the subaccounts of the location
+            # Get the XMLFeedLink related to the locationId (subaccount)
+            xml_feed_link = XMLFeedLink.objects.filter(subaccounts__LocationId=location_id)
+            print("xml Url :", xml_feed_link)
+            
+            if xml_feed_link:
+                # Only return properties that belong to the xml_feed_link
+                queryset = queryset.filter(xml_url=xml_feed_link)
+            else:
+                # If no XMLFeedLink found for the locationId, return an empty queryset
+                queryset = queryset.none()
 
         return queryset
 
@@ -75,10 +95,25 @@ class PropertyDataViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         queryset = PropertyData.objects.filter(xml_url__active=True)
         xml_url_param = self.request.query_params.get('xml_urls')
+        access_level = self.request.query_params.get('accessLevel', 'restricted')
+        location_id = self.request.query_params.get('locationId', None)
 
         if xml_url_param:
             print("uesss")
             queryset = queryset.filter(xml_url__url=xml_url_param)
+
+        if access_level == 'restricted' and location_id:
+            # Filter properties based on the subaccounts of the location
+            # Get the XMLFeedLink related to the locationId (subaccount)
+            xml_feed_link = XMLFeedLink.objects.filter(subaccounts__LocationId=location_id)
+            print("xml Url :", xml_feed_link)
+            
+            if xml_feed_link:
+                # Only return properties that belong to the xml_feed_link
+                queryset = queryset.filter(xml_url__in=xml_feed_link)
+            else:
+                # If no XMLFeedLink found for the locationId, return an empty queryset
+                queryset = queryset.none()
         print("u1esss")
 
         return queryset
@@ -104,7 +139,7 @@ class ContactsView(APIView):
         
         selection = request.query_params.get('selection', 'false').lower() in ['true', '1', 'yes']
         serializer_class = self.get_serializer_class(selection)
-        
+
         if id:
             try:
                 contact = Contact.objects.get(id=id)
@@ -142,6 +177,24 @@ class FilterView(APIView):
     permission_classes = [AllowAny]
     def get(self, request):
         queryset = PropertyData.objects.filter(xml_url__active=True)
+
+        access_level = self.request.query_params.get('accessLevel', 'restricted')
+        location_id = self.request.query_params.get('locationId', None)
+
+        if access_level == 'restricted' and location_id:
+            # Filter properties based on the subaccounts of the location
+            # Get the XMLFeedLink related to the locationId (subaccount)
+            xml_feed_link = XMLFeedLink.objects.filter(subaccounts__LocationId=location_id)
+            print("xml Url :", xml_feed_link)
+            
+            if xml_feed_link:
+                # Only return properties that belong to the xml_feed_link
+                queryset = queryset.filter(xml_url__in=xml_feed_link)
+            else:
+                # If no XMLFeedLink found for the locationId, return an empty queryset
+                queryset = queryset.none()
+
+
         min_price = queryset.aggregate(min_price=Min('price'))['min_price']
         max_price = queryset.aggregate(max_price=Max('price'))['max_price']
 
@@ -287,3 +340,19 @@ class SubAccountsView(APIView):
             "count": all_accounts.count(),
             "sub_accounts": list(all_accounts)
         })
+    
+
+
+class AddSubaccountToXMLFeedView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, pk):
+        try:
+            xml_feed = XMLFeedLink.objects.get(pk=pk)
+        except XMLFeedLink.DoesNotExist:
+            return Response({'error': 'XMLFeedLink not found'}, status=404)
+
+        serializer = XMLFeedSubaccountUpdateSerializer(xml_feed, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=200)
+        return Response(serializer.errors, status=400)

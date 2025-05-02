@@ -7,14 +7,14 @@ from accounts.models import Property
 # class Command(BaseCommand):
 #     help = "Parse XML feed and store property data in the database"
 
-def handle(self, *args, **kwargs):
-    # XML feed URL
-    xml_url = "https://example.com/properties.xml"
-    response = requests.get(xml_url)
-    root = ET.fromstring(response.content)
-    print("len root", len(root))
+# def handle(self, *args, **kwargs):
+#     # XML feed URL
+#     xml_url = "https://example.com/properties.xml"
+#     response = requests.get(xml_url)
+#     root = ET.fromstring(response.content)
+#     print("len root", len(root))
 
-handle()
+# handle()
     # for property_elem in root.findall(".//property"):
     #     property_data = {
     #         "property_id": self.get_text(property_elem, "id"),

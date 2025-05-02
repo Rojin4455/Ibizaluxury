@@ -1,9 +1,10 @@
 from rest_framework import serializers
 from .models import PropertyData,XMLFeedLink
-from core.models import Contact, CustomField
+from core.models import Contact, CustomField, OAuthToken
 from core.services import ContactServices
 import requests
 import xml.etree.ElementTree as ET
+from core.serializers import LocationSerializer
 
 
 class PropertyDataSerializer(serializers.ModelSerializer):
@@ -39,7 +40,7 @@ class ContactsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
         # fields = "__all__"
-        exclude = ['properties', 'remarks', 'selec_url'] 
+        exclude = ['remarks', 'selec_url'] 
         
 class ContactSelectionSerializer(serializers.ModelSerializer):
     properties_detail = PropertyDataSerializer(source="properties", many=True, read_only=True)
@@ -97,6 +98,7 @@ class XMLFeedSourceSerializer(serializers.ModelSerializer):
             "active",
             "created_at",
             "updated_at",
+            'subaccounts',
         ]
         read_only_fields = ("id", "created_at", "updated_at")
 
@@ -104,6 +106,11 @@ class XMLFeedSourceSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data["active"] = True
         return super().create(validated_data)
+    
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['subaccounts'] = LocationSerializer(instance.subaccounts.all(), many=True).data
+        return rep
 
     
     def validate_url(self, value):
@@ -128,3 +135,19 @@ class XMLFeedSourceSerializer(serializers.ModelSerializer):
         return value
     
 
+
+
+
+class XMLFeedSubaccountUpdateSerializer(serializers.ModelSerializer):
+    subaccounts = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=OAuthToken.objects.all()
+    )
+
+    class Meta:
+        model = XMLFeedLink
+        fields = ['id', 'subaccounts']
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['subaccounts'] = LocationSerializer(instance.subaccounts.all(), many=True).data
+        return rep

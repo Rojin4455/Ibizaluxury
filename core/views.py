@@ -8,9 +8,14 @@ from django.utils.decorators import method_decorator
 from django.utils.timezone import now
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
-from rest_framework import status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework import status, generics
 from core import helpers
+from core.services import OAuthServices
+from core.serializers import LocationSerializer
+from core.models import OAuthToken
+
+
 
 # Create your views here.
 logger = logging.getLogger(__name__)
@@ -136,3 +141,52 @@ class ContactWebhookView(APIView):
     def delete_contact(self, data):
         """ Deletes a contact """
         Contact.objects.filter(id=data["id"]).delete()
+
+
+
+class TokenView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        authorization_code = request.GET.get("code")
+
+        if not authorization_code:
+            return Response({"error": "Missing authorization code"}, status=400)
+
+        try:
+            token_obj = OAuthServices.get_fresh_token(authorization_code)
+            return Response({
+                "message": "token added successfully",
+            })
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+        
+class LocationListCreateDeleteView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = LocationSerializer
+    queryset = OAuthToken.objects.all()
+
+    def get(self, request):
+        locations = self.get_queryset()
+        serializer = self.get_serializer(locations, many=True)
+        return Response(serializer.data)
+
+    def delete(self, request, pk=None):
+        # Delete a location
+        try:
+            location = self.get_queryset().get(pk=pk)
+            location.delete()
+            return Response({"message": "Location deleted"}, status=status.HTTP_204_NO_CONTENT)
+        except OAuthToken.DoesNotExist:
+            return Response({"error": "Location not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    def post(self, request, pk=None):
+        # Toggle block/unblock status
+        try:
+            location = self.get_queryset().get(pk=pk)
+            location.is_blocked = not location.is_blocked
+            location.save()
+            return Response({"message": f"Location {'blocked' if location.is_blocked else 'unblocked'}"})
+        except OAuthToken.DoesNotExist:
+            return Response({"error": "Location not found"}, status=status.HTTP_404_NOT_FOUND)
+

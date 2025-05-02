@@ -1,7 +1,10 @@
 from django.db import models
 from django.utils.timezone import now
-from django.contrib.auth.models import AbstractUser
 
+# def get_xml_feed_link_model():
+#     from django.apps import apps
+
+#     return apps.get_model('accounts', 'XMLFeedLink')
 
 # Create your models here.
 # class User(AbstractUser):
@@ -26,6 +29,20 @@ class OAuthToken(models.Model):
     company_name = models.CharField(max_length=200, null=True, blank=True)
     LocationId = models.CharField(max_length=100,unique=True)
     userId = models.CharField(max_length=100)
+    is_blocked = models.BooleanField(default=False)
+
+    # xml_feeds = models.ManyToManyField(
+    #     get_xml_feed_link_model(),
+    #     through='XMLFeedSubaccountLink',
+    #     related_name='oauth_tokens'
+    # )
+    
+    def __str__(self):
+        return f"{self.company_name} ({self.LocationId})"
+    
+    class Meta:
+        verbose_name = "OAuth Token"
+        verbose_name_plural = "OAuth Tokens"
     
     def is_expired(self):
         """Check if the access token is expired"""
@@ -57,6 +74,7 @@ class Contact(models.Model):
     properties = models.ManyToManyField('accounts.PropertyData', blank=True, related_name="contacts")
     remarks = models.TextField(null=True, blank=True)
     selec_url = models.URLField(null=True, blank=True)
+    
     
 
     def __str__(self):
