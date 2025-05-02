@@ -34,9 +34,7 @@ class PropertiesView(ListAPIView):
     pagination_class = PropertyPagination
 
     def get_queryset(self):
-        queryset = PropertyData.objects.filter(xml_url__active=True).order_by('-id')
-
-        # Get search value if present
+        queryset = PropertyData.objects.select_related('xml_url').filter(xml_url__active=True).order_by('-id')
         search_val = self.request.query_params.get('search', None)
         access_level = self.request.query_params.get('accessLevel', 'restricted')  # Default is 'restricted'
         location_id = self.request.query_params.get('locationId', None)
@@ -93,7 +91,7 @@ class PropertyDataViewSet(viewsets.ReadOnlyModelViewSet):
 
 
     def get_queryset(self):
-        queryset = PropertyData.objects.filter(xml_url__active=True)
+        queryset = PropertyData.objects.select_related('xml_url').filter(xml_url__active=True).order_by('-id')
         xml_url_param = self.request.query_params.get('xml_urls')
         access_level = self.request.query_params.get('accessLevel', 'restricted')
         location_id = self.request.query_params.get('locationId', None)
@@ -103,16 +101,10 @@ class PropertyDataViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(xml_url__url=xml_url_param)
 
         if access_level == 'restricted' and location_id:
-            # Filter properties based on the subaccounts of the location
-            # Get the XMLFeedLink related to the locationId (subaccount)
             xml_feed_link = XMLFeedLink.objects.filter(subaccounts__LocationId=location_id)
-            print("xml Url :", xml_feed_link)
-            
             if xml_feed_link:
-                # Only return properties that belong to the xml_feed_link
                 queryset = queryset.filter(xml_url__in=xml_feed_link)
             else:
-                # If no XMLFeedLink found for the locationId, return an empty queryset
                 queryset = queryset.none()
         print("u1esss")
 
@@ -219,7 +211,7 @@ class FilterView(APIView):
         xml_feeds = (
             queryset
             .order_by()
-            .values_list("xml_url__url")
+            .values_list("xml_url__url", "xml_url__contact_name")
             .distinct()
             
         )

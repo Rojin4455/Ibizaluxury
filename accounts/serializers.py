@@ -89,6 +89,11 @@ class ContactSelectionSerializer(serializers.ModelSerializer):
         
 class XMLFeedSourceSerializer(serializers.ModelSerializer):
     active = serializers.BooleanField(required=False)
+    subaccounts = serializers.PrimaryKeyRelatedField(
+        queryset=OAuthToken.objects.all(),  # replace with your actual model
+        many=True,
+        required=False  # <-- make it optional
+    )
 
     class Meta:
         model = XMLFeedLink
@@ -98,44 +103,48 @@ class XMLFeedSourceSerializer(serializers.ModelSerializer):
             "active",
             "created_at",
             "updated_at",
-            'subaccounts',
+            "subaccounts",
+            "contact_name",
         ]
         read_only_fields = ("id", "created_at", "updated_at")
 
-
     def create(self, validated_data):
+        subaccounts = validated_data.pop('subaccounts', [])
         validated_data["active"] = True
-        return super().create(validated_data)
-    
+        xml_feed = super().create(validated_data)
+        if subaccounts:
+            xml_feed.subaccounts.set(subaccounts)
+        return xml_feed
+
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         rep['subaccounts'] = LocationSerializer(instance.subaccounts.all(), many=True).data
         return rep
 
-    
     def validate_url(self, value):
-        # Try fetching the URL
         try:
             response = requests.get(value)
-            response.raise_for_status()  # Raise HTTP errors
+            response.raise_for_status()
 
-            # Parse XML
             root = ET.fromstring(response.content)
-
-            # Check if at least one <property> exists
             if not root.findall(".//property"):
                 raise serializers.ValidationError(
                     "The provided URL does not contain any <property> elements."
                 )
-
         except (requests.RequestException, ET.ParseError) as e:
             raise serializers.ValidationError(
                 f"Invalid or inaccessible XML feed URL: {str(e)}"
             )
         return value
+
     
 
+class PropertyDataSerializer(serializers.ModelSerializer):
+    contact_name = serializers.CharField(source='xml_url.contact_name', read_only=True)
 
+    class Meta:
+        model = PropertyData
+        fields = '__all__'
 
 
 class XMLFeedSubaccountUpdateSerializer(serializers.ModelSerializer):

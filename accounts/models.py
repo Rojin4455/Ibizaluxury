@@ -36,6 +36,7 @@ class Property(models.Model):
 
 class XMLFeedLink(models.Model):
     url = models.URLField(unique=True)
+    contact_name = models.CharField(max_length=200, null=True, blank=True)
     active = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -46,7 +47,6 @@ class XMLFeedLink(models.Model):
         # through='XMLFeedSubaccount',  # Use the custom through model
         related_name='xml_feeds',  # OAuthToken can access related XMLFeedLinks with this name
     )
-
     def __str__(self):
         return self.url
 
