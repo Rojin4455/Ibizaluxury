@@ -58,6 +58,7 @@ class ContactWebhookView(APIView):
             "lastName":payload.get("lastName",""),
             "email":payload.get("email"),
             "phone":payload.get("phone",""),
+            "locationId":payload.get("locationId")
             **customfields
             
             }
@@ -103,6 +104,7 @@ class ContactWebhookView(APIView):
     
     def create_contact(self, data):
         """ Creates a new contact """
+
         Contact.objects.create(
             id=data["id"],
             first_name=data.get("firstName", ""),
@@ -124,6 +126,7 @@ class ContactWebhookView(APIView):
         contact = Contact.objects.filter(id=data["id"]).first()
         if contact:
             contact.first_name = data.get("firstName", contact.first_name)
+            contact.location_id = data.get("locationId", contact.location_id)
             contact.last_name = data.get("lastName", contact.last_name)
             contact.email = data.get("email", contact.email)
             contact.phone = data.get("phone", contact.phone)
