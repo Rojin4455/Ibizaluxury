@@ -95,12 +95,16 @@ class PropertyDataViewSet(viewsets.ReadOnlyModelViewSet):
         xml_url_param = self.request.query_params.get('xml_urls')
         access_level = self.request.query_params.get('accessLevel', 'restricted')
         location_id = self.request.query_params.get('locationId', None)
+        print(len(queryset))
+
+        print("Access leve and location ID:", access_level, location_id)
 
         if xml_url_param:
             print("uesss")
             queryset = queryset.filter(xml_url__url=xml_url_param)
 
         if access_level == 'restricted' and location_id:
+            print("hrererer")
             xml_feed_link = XMLFeedLink.objects.filter(subaccounts__LocationId=location_id)
             if xml_feed_link:
                 queryset = queryset.filter(xml_url__in=xml_feed_link)
@@ -198,6 +202,14 @@ class FilterView(APIView):
             .exclude(property_type__isnull=True)
             .exclude(property_type="")
         )
+        currency_types = (
+            queryset
+            .order_by()
+            .values_list('currency', flat=True)
+            .distinct()
+            .exclude(currency__isnull=True)
+            .exclude(currency="")
+        )
 
         property_locations = (
             queryset
@@ -224,7 +236,8 @@ class FilterView(APIView):
             'property_types': list(property_types),
             'price_freqs': list(price_freqs),
             'locations': list(property_locations),
-            "xml_urls":list(xml_feeds)
+            "xml_urls":list(xml_feeds),
+            "currency_types":list(currency_types)
         })
 
 

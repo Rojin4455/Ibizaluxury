@@ -27,12 +27,13 @@ class PropertyDataFilter(filters.FilterSet):
     beds = filters.NumberFilter(method='filter_beds')
     baths = filters.NumberFilter(method='filter_baths')
     xml_url = filters.CharFilter(field_name='xml_url__url', lookup_expr='exact')
+    currency = filters.CharFilter(field_name='currency', lookup_expr='exact')
 
     class Meta:
         model = PropertyData
         fields = [
             'property_type', 'price_min', 'price_max',
-            'price_freq', 'town', 'beds', 'baths','xml_url'
+            'price_freq', 'town', 'beds', 'baths','xml_url','currency'
             ]
     def filter_beds(self, queryset, name, value):
         if value >= 4:

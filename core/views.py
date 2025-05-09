@@ -106,6 +106,7 @@ class ContactWebhookView(APIView):
         Contact.objects.create(
             id=data["id"],
             first_name=data.get("firstName", ""),
+            location_id=data.get("locationId",""),
             last_name=data.get("lastName", ""),
             email=data.get("email", ""),
             phone=data.get("phone", ""),

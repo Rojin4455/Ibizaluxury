@@ -114,6 +114,22 @@ class OAuthServices:
 
         token_obj.save()
         return token_obj
+    
+
+    @staticmethod
+    def refresh_all_tokens():
+        from core.services import OAuthServices  # to avoid circular import
+        location_ids = list(OAuthToken.objects.values_list('LocationId', flat=True))
+        results = []
+
+        for location_id in location_ids:
+            try:
+                token_obj = OAuthServices.refresh_access_token(location_id)
+                results.append((location_id, "success", token_obj))
+            except Exception as e:
+                results.append((location_id, "error", str(e)))
+
+        return results
 
 
 class ContactServiceError(Exception):

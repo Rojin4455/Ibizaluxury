@@ -162,7 +162,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     'refresh_token': {
         'task': 'core.tasks.refresh_token_task',
-        'schedule': crontab(hour='*/24'),
+        'schedule': crontab(minute='*'),
     }
 }
 

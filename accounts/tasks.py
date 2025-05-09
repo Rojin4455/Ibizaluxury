@@ -13,3 +13,9 @@ def handle_xmlfeed():
     feed_links = XMLFeedLink.objects.filter(active=True)
     for feed_link in feed_links:
         refresh_xml_feed(feed_link.url)
+
+
+@shared_task
+def handle_refresh_xmlfeed_each(url):
+    refresh_xml_feed(url)
+

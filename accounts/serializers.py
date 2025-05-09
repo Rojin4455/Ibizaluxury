@@ -5,6 +5,8 @@ from core.services import ContactServices
 import requests
 import xml.etree.ElementTree as ET
 from core.serializers import LocationSerializer
+from accounts.helpers import refresh_xml_feed
+from accounts.tasks import handle_refresh_xmlfeed_each
 
 
 class PropertyDataSerializer(serializers.ModelSerializer):
@@ -114,6 +116,8 @@ class XMLFeedSourceSerializer(serializers.ModelSerializer):
         xml_feed = super().create(validated_data)
         if subaccounts:
             xml_feed.subaccounts.set(subaccounts)
+
+        handle_refresh_xmlfeed_each.delay(xml_feed.url)
         return xml_feed
 
     def to_representation(self, instance):

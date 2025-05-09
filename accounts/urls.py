@@ -20,7 +20,5 @@ urlpatterns = [
     path('fetch-accounts/', SubAccountsView.as_view()),
     path('xmlfeeds/<int:pk>/add-subaccounts/', AddSubaccountToXMLFeedView.as_view(), name='add-subaccounts'),
 
-    
-
 ]+router.urls
 
