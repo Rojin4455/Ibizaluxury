@@ -58,7 +58,7 @@ class ContactWebhookView(APIView):
             "lastName":payload.get("lastName",""),
             "email":payload.get("email"),
             "phone":payload.get("phone",""),
-            "locationId":payload.get("locationId")
+            "locationId":payload.get("locationId"),
             **customfields
             
             }
