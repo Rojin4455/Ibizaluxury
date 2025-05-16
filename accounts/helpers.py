@@ -197,3 +197,45 @@ def get_datetime(element, path):
     except ValueError:
         return None
     return None
+
+
+
+
+def get_filtered_properties_for_contact(contact, location_id=None):
+    """
+    Get properties based on contact's filter criteria
+    """
+    # Start with base queryset
+    queryset = PropertyData.objects.select_related('xml_url').filter(xml_url__active=True)
+    
+    # Apply location-based filtering
+    if location_id:
+        xml_feed_link = XMLFeedLink.objects.filter(subaccounts__LocationId=location_id)
+        if xml_feed_link:
+            queryset = queryset.filter(xml_url__in=xml_feed_link)
+        else:
+            return queryset.none()
+    
+    # Create filters based on contact criteria
+    filters = {}
+    
+    if contact.min_price:
+        filters['price__gte'] = contact.min_price
+    if contact.max_price:
+        filters['price__lte'] = contact.max_price
+    if contact.property_type:
+        filters['property_type'] = contact.property_type
+    if contact.price_freq:
+        filters['price_freq'] = contact.price_freq
+    if contact.province:
+        filters['province'] = contact.province
+    if contact.beds:
+        filters['beds'] = contact.beds
+    if contact.baths:
+        filters['baths'] = contact.baths
+    
+    # Apply filters
+    if filters:
+        queryset = queryset.filter(**filters)
+    
+    return queryset.order_by('-created_at')

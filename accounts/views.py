@@ -24,7 +24,8 @@ from django.db.models import Q
 
 from core.models import OAuthToken
 
-from accounts.helpers import refresh_xml_feed
+
+from accounts.helpers import refresh_xml_feed,get_filtered_properties_for_contact
 
 
 
@@ -146,8 +147,16 @@ class ContactsView(APIView):
         else:
             contacts = Contact.objects.all()
             contacts = self.filter_queryset(request, contacts)
-            serializer = ContactsSerializer(contacts, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            response_data = []
+            for contact in contacts:
+                contact_data = ContactsSerializer(contact).data
+                properties = get_filtered_properties_for_contact(contact)
+                property_data = PropertyDataSerializer(properties, many=True).data  # Replace with your actual serializer
+                response_data.append({
+                    "contact": contact_data,
+                    "properties": property_data
+                })
+            return Response(response_data, status=status.HTTP_200_OK)
 
     def put(self, request, id=None):
         
