@@ -157,12 +157,12 @@ USE_TZ = True
 
 CELERY_BEAT_SCHEDULE = {
     'update-xml': {
-        'task': 'accounts.tasks.import_properties_with_retry',
-        'schedule': crontab(hour='*/24'),
+        'task': 'accounts.tasks.handle_xmlfeed',
+        'schedule': crontab(hour='*/12'),
     },
     'refresh_token': {
         'task': 'core.tasks.refresh_token_task',
-        'schedule': crontab(minute='*'),
+        'schedule': crontab(hour='*/20'),
     }
 }
 
