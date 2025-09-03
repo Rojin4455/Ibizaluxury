@@ -200,6 +200,7 @@ def get_datetime(element, path):
 
 
 
+from django.core.exceptions import ValidationError
 
 def get_filtered_properties_for_contact(contact, location_id=None):
     """
@@ -219,10 +220,22 @@ def get_filtered_properties_for_contact(contact, location_id=None):
     # Create filters based on contact criteria
     filters = {}
     
-    if contact.min_price:
-        filters['price__gte'] = contact.min_price
-    if contact.max_price:
-        filters['price__lte'] = contact.max_price
+    # Use the model's decimal properties if available, otherwise clean manually
+    if hasattr(contact, 'min_price_decimal'):
+        min_price = contact.min_price_decimal
+    else:
+        min_price = clean_price_value(contact.min_price) if contact.min_price else None
+    
+    if hasattr(contact, 'max_price_decimal'):
+        max_price = contact.max_price_decimal
+    else:
+        max_price = clean_price_value(contact.max_price) if contact.max_price else None
+    
+    if min_price is not None:
+        filters['price__gte'] = min_price
+    if max_price is not None:
+        filters['price__lte'] = max_price
+    
     if contact.property_type:
         filters['property_type'] = contact.property_type
     if contact.price_freq:
@@ -236,6 +249,11 @@ def get_filtered_properties_for_contact(contact, location_id=None):
     
     # Apply filters
     if filters:
-        queryset = queryset.filter(**filters)
+        try:
+            queryset = queryset.filter(**filters)
+        except ValidationError as e:
+            # Log the error and return empty queryset if filtering fails
+            print(f"Filtering error: {e}")
+            return queryset.none()
     
     return queryset.order_by('-created_at')

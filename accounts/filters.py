@@ -20,10 +20,12 @@ class PropertyDataFilter(filters.FilterSet):
     price_max = filters.NumberFilter(field_name="price", lookup_expr='lte')
     property_type = filters.CharFilter(field_name="property_type", lookup_expr='icontains')
     price_freq = filters.CharFilter(field_name="price_freq", lookup_expr='icontains')
-    town = filters.MultipleChoiceFilter(
-        choices=[(town, town) for town in property_locations],
+    town = django_filters.MultipleChoiceFilter(
+        field_name="town",
+        choices=[],   # empty at import time
         conjoined=False,  # OR behavior between selected towns
     )
+
     beds = filters.NumberFilter(method='filter_beds')
     baths = filters.NumberFilter(method='filter_baths')
     xml_url = filters.CharFilter(field_name='xml_url__url', lookup_expr='exact')
@@ -48,10 +50,11 @@ class PropertyDataFilter(filters.FilterSet):
 
 
 class ContactFilter(filters.FilterSet):
-
     location_id = filters.CharFilter(lookup_expr='exact')
 
 
     class Meta:
         model = Contact
         fields = [ 'location_id']
+
+

@@ -116,25 +116,35 @@ class PropertyDataViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
 
+class ContactsPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"  # allow ?page_size=50
+    max_page_size = 100
 
 class ContactsView(APIView):
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend]
     filterset_class = ContactFilter
-    
+    pagination_class = ContactsPagination
+
     def get_serializer_class(self, selection=False):
-        if selection:
-            return ContactSelectionSerializer
-        return ContactsSerializer
-    
+        return ContactSelectionSerializer if selection else ContactsSerializer
+
     def filter_queryset(self, request, queryset):
         for backend in list(self.filter_backends):
             queryset = backend().filter_queryset(request, queryset, self)
         return queryset
 
+    def paginate_queryset(self, queryset, request, view=None):
+        if not hasattr(self, "_paginator"):
+            self._paginator = self.pagination_class()
+        return self._paginator.paginate_queryset(queryset, request, view=view)
+
+    def get_paginated_response(self, data):
+        return self._paginator.get_paginated_response(data)
+
     def get(self, request, id=None):
-        
-        selection = request.query_params.get('selection', 'false').lower() in ['true', '1', 'yes']
+        selection = request.query_params.get("selection", "false").lower() in ["true", "1", "yes"]
         serializer_class = self.get_serializer_class(selection)
 
         if id:
@@ -144,22 +154,37 @@ class ContactsView(APIView):
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Contact.DoesNotExist:
                 return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
-        else:
-            contacts = Contact.objects.all()
-            contacts = self.filter_queryset(request, contacts)
+
+        contacts = Contact.objects.all()
+        contacts = self.filter_queryset(request, contacts)
+
+        # apply pagination
+        page = self.paginate_queryset(contacts, request, view=self)
+        if page is not None:
             response_data = []
-            for contact in contacts:
+            for contact in page:
                 contact_data = ContactsSerializer(contact).data
                 properties = get_filtered_properties_for_contact(contact)
-                property_data = PropertyDataSerializer(properties, many=True).data  # Replace with your actual serializer
+                property_data = PropertyDataSerializer(properties, many=True).data
                 response_data.append({
                     "contact": contact_data,
-                    "properties": property_data
+                    "properties": property_data,
                 })
-            return Response(response_data, status=status.HTTP_200_OK)
+            return self.get_paginated_response(response_data)
+
+        # if paginator not applied, return full list (rare case)
+        response_data = []
+        for contact in contacts:
+            contact_data = ContactsSerializer(contact).data
+            properties = get_filtered_properties_for_contact(contact)
+            property_data = PropertyDataSerializer(properties, many=True).data
+            response_data.append({
+                "contact": contact_data,
+                "properties": property_data,
+            })
+        return Response(response_data, status=status.HTTP_200_OK)
 
     def put(self, request, id=None):
-        
         if not id:
             return Response({"detail": "ID is required for update"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -169,13 +194,9 @@ class ContactsView(APIView):
             return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = ContactSelectionSerializer(contact, data=request.data, partial=True)
-
         if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-
 
 
 class FilterView(APIView):

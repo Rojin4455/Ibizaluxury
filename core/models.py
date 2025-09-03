@@ -1,5 +1,9 @@
 from django.db import models
 from django.utils.timezone import now
+from django.core.exceptions import ValidationError
+import re
+from decimal import Decimal, InvalidOperation
+
 
 # def get_xml_feed_link_model():
 #     from django.apps import apps
@@ -75,7 +79,79 @@ class Contact(models.Model):
     remarks = models.TextField(null=True, blank=True)
     selec_url = models.URLField(null=True, blank=True)
     
+
+    def clean_price_value(self, price_str):
+        """
+        Clean price string and convert to decimal, handling k (thousands) and m (millions)
+        Returns None if conversion fails
+        
+        Examples:
+        - "2.3m" -> 2300000
+        - "500k" -> 500000
+        - "1.5m" -> 1500000
+        - "750k" -> 750000
+        - "1000000" -> 1000000
+        """
+        if not price_str:
+            return None
+        
+        # Convert to lowercase string and strip whitespace
+        price_str = str(price_str).lower().strip()
+        
+        # Check for millions (m)
+        if price_str.endswith('m'):
+            # Extract numeric part
+            numeric_part = price_str[:-1]
+            try:
+                base_value = Decimal(numeric_part)
+                return base_value * 1000000  # Convert millions
+            except InvalidOperation:
+                return None
+        
+        # Check for thousands (k)
+        elif price_str.endswith('k'):
+            # Extract numeric part
+            numeric_part = price_str[:-1]
+            try:
+                base_value = Decimal(numeric_part)
+                return base_value * 1000  # Convert thousands
+            except InvalidOperation:
+                return None
+        
+        # Handle regular numbers (remove any non-numeric characters except decimal points)
+        else:
+            # Remove currency symbols, commas, etc., but keep decimals
+            cleaned = re.sub(r'[^\d.]', '', price_str)
+            
+            if not cleaned:
+                return None
+            
+            try:
+                return Decimal(cleaned)
+            except InvalidOperation:
+                return None
+
+    @property
+    def min_price_decimal(self):
+        """Get min_price as decimal value"""
+        return self.clean_price_value(self.min_price)
     
+    @property
+    def max_price_decimal(self):
+        """Get max_price as decimal value"""
+        return self.clean_price_value(self.max_price)
+
+    def clean(self):
+        """Custom validation"""
+        super().clean()
+        
+        # Validate min_price if provided
+        if self.min_price and self.clean_price_value(self.min_price) is None:
+            raise ValidationError({'min_price': f'Invalid price format: {self.min_price}'})
+        
+        # Validate max_price if provided
+        if self.max_price and self.clean_price_value(self.max_price) is None:
+            raise ValidationError({'max_price': f'Invalid price format: {self.max_price}'})
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.email})"
