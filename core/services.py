@@ -195,10 +195,14 @@ class ContactServices:
         imported_contacts_summary = []
         location_ids = list(OAuthToken.objects.values_list('LocationId', flat=True))
         for location_id in location_ids:
+            if not location_id=="ttQIDuvyngILWMJ5wABA":
+                continue
             tokenobj :OAuthToken = OAuthServices.get_valid_access_token_obj(location_id)
             all_contacts = []
             url = None
             i = 0
+            
+            
 
             while True:
                 response_data = ContactServices.get_contacts(location_id=tokenobj.LocationId,query=query, url=url)
@@ -255,7 +259,8 @@ class ContactServices:
 
         Contact.objects.bulk_create(
         contact_objects,
-        update_conflicts=True,
+        # update_conflicts=True,
+        ignore_conflicts=True,
         unique_fields=["id"],
         update_fields=[
             "first_name", "last_name", "email", "phone", "country", "location_id", "type",

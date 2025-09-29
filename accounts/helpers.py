@@ -236,7 +236,7 @@ def get_filtered_properties_for_contact(contact, location_id=None):
     if max_price is not None:
         filters['price__lte'] = max_price
     
-    if contact.property_type:
+    if contact.property_type and contact.property_type in ["land", "villa", "Villa", "Land", "appartment", "Appartment", "finca", "Finca"]:
         filters['property_type'] = contact.property_type
     if contact.price_freq:
         filters['price_freq'] = contact.price_freq
