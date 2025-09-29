@@ -246,6 +246,7 @@ def get_filtered_properties_for_contact(contact, location_id=None):
         filters['beds'] = contact.beds
     if contact.baths:
         filters['baths'] = contact.baths
+
     
     # Apply filters
     if filters:

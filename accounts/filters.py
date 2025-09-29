@@ -18,7 +18,6 @@ class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
 class PropertyDataFilter(filters.FilterSet):
     price_min = filters.NumberFilter(field_name="price", lookup_expr='gte')
     price_max = filters.NumberFilter(field_name="price", lookup_expr='lte')
-    property_type = filters.CharFilter(field_name="property_type", lookup_expr='icontains')
     price_freq = filters.CharFilter(field_name="price_freq", lookup_expr='icontains')
     town = django_filters.MultipleChoiceFilter(
         field_name="town",
@@ -30,6 +29,8 @@ class PropertyDataFilter(filters.FilterSet):
     baths = filters.NumberFilter(method='filter_baths')
     xml_url = filters.CharFilter(field_name='xml_url__url', lookup_expr='exact')
     currency = filters.CharFilter(field_name='currency', lookup_expr='exact')
+
+    property_type = filters.CharFilter(method="filter_property_type")
 
     class Meta:
         model = PropertyData
@@ -46,6 +47,13 @@ class PropertyDataFilter(filters.FilterSet):
         if value >= 4:
             return queryset.filter(**{f"{name}__gte": value})
         return queryset.filter(**{name: value})
+    
+
+    def filter_property_type(self, queryset, name, value):
+        allowed = ["land", "villa", "appartment", "finca"]
+        if value and value.lower() in [x.lower() for x in allowed]:
+            return queryset.filter(**{f"{name}__iexact": value})
+        return queryset  # ignore if not in allowed list
 
 
 
