@@ -78,6 +78,9 @@ class Contact(models.Model):
     properties = models.ManyToManyField('accounts.PropertyData', blank=True, related_name="contacts")
     remarks = models.TextField(null=True, blank=True)
     selec_url = models.URLField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-date_added']
     
 
     def clean_price_value(self, price_str):

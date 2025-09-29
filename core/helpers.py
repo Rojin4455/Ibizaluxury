@@ -4,9 +4,9 @@ from datetime import datetime
 
 
 def map_to_customfield(custom_field_id, location_id):
-    custom_field = CustomField.objects.get(id = custom_field_id, location_id = location_id)
+    custom_field = CustomField.objects.filter(id = custom_field_id, location_id = location_id)
     if custom_field:
-        return custom_field
+        return custom_field.first()
     else:
         custom_field = save_custom_field_to_db(custom_field_id, location_id)
         return custom_field
