@@ -19,11 +19,13 @@ class PropertyDataFilter(filters.FilterSet):
     price_min = filters.NumberFilter(field_name="price", lookup_expr='gte')
     price_max = filters.NumberFilter(field_name="price", lookup_expr='lte')
     price_freq = filters.CharFilter(field_name="price_freq", lookup_expr='icontains')
-    town = django_filters.MultipleChoiceFilter(
-        field_name="town",
-        choices=[],   # empty at import time
-        conjoined=False,  # OR behavior between selected towns
-    )
+    town = CharInFilter(field_name="town", lookup_expr="in")
+
+    # town = django_filters.MultipleChoiceFilter(
+    #     field_name="town",
+    #     choices=[],   # empty at import time
+    #     conjoined=False,  # OR behavior between selected towns
+    # )
 
     beds = filters.NumberFilter(method='filter_beds')
     baths = filters.NumberFilter(method='filter_baths')
