@@ -1,5 +1,6 @@
 from django_filters import rest_framework as filters
 import django_filters
+from django.db.models import Q
 from .models import PropertyData
 from core.models import Contact
 
@@ -61,10 +62,21 @@ class PropertyDataFilter(filters.FilterSet):
 
 class ContactFilter(filters.FilterSet):
     location_id = filters.CharFilter(lookup_expr='exact')
-
+    search = filters.CharFilter(method='filter_search')
 
     class Meta:
         model = Contact
-        fields = [ 'location_id']
+        fields = ['location_id']
+
+    def filter_search(self, queryset, name, value):
+        if not value or not value.strip():
+            return queryset
+        q = value.strip()
+        return queryset.filter(
+            Q(first_name__icontains=q) |
+            Q(last_name__icontains=q) |
+            Q(email__icontains=q) |
+            Q(phone__icontains=q)
+        )
 
 
