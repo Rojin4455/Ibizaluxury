@@ -52,6 +52,8 @@ class ContactWebhookView(APIView):
         webhook_id = payload.get("webhookId")
         event_type = payload.get("type")
         customfields = self.add_customfields(payload.get("customFields",None),payload.get("locationId",None))
+
+        print("customfields-----------------------------------------------------------",customfields)
         contact_data = {
             "id":payload.get("id"),
             "firstName":payload.get("firstName",""),
