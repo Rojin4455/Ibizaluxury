@@ -100,9 +100,10 @@ class ContactWebhookView(APIView):
             for cf in data:
                 print("cf",cf)
                 cf_obj = helpers.map_to_customfield(cf["id"],locatioId)
-                cf_dict[cf_obj.name.lower()]=cf["value"]
+                if cf_obj:
+                    cf_dict[cf_obj.name.lower()]=cf["value"]
         # print("added custom fields: ", cf_dict)     
-        return cf_dict
+        return helpers.normalize_contact_custom_fields(cf_dict)
     
     def create_contact(self, data):
         """ Creates a new contact """
@@ -117,8 +118,15 @@ class ContactWebhookView(APIView):
             min_price = data.get("min_price",""),
             max_price = data.get("max_price",""),
             province = data.get("province",""),
-            price_freq = data.get("price_freq",""),
+            price_freq = data.get("price_freq") or "",
             property_type = data.get("property_type",""),
+            property_status = data.get("property_status",""),
+            preferred_location = data.get("preferred_location",""),
+            budget = data.get("budget",""),
+            weekly_price_range = data.get("weekly_price_range",""),
+            rental_property_type = data.get("rental_property_type",""),
+            checkin_date = data.get("checkin_date",""),
+            checkout_date = data.get("checkout_date",""),
             beds = safe_int(data.get("beds")),
             baths = safe_int(data.get("baths"))
         )
@@ -135,10 +143,24 @@ class ContactWebhookView(APIView):
             contact.min_price = data.get("min_price", contact.min_price)
             contact.max_price = data.get("max_price", contact.max_price)
             contact.province = data.get("province", contact.province)
-            contact.price_freq = data.get("price_freq", contact.price_freq)
+            new_price_freq = data.get("price_freq")
+            if new_price_freq is not None:
+                contact.price_freq = new_price_freq
             contact.property_type = data.get("property_type", contact.property_type)
-            contact.beds = int(data.get("beds", contact.beds))
-            contact.baths = int(data.get("baths", contact.baths))
+            contact.property_status = data.get("property_status", contact.property_status)
+            contact.preferred_location = data.get("preferred_location", contact.preferred_location)
+            contact.budget = data.get("budget", contact.budget)
+            contact.weekly_price_range = data.get("weekly_price_range", contact.weekly_price_range)
+            contact.rental_property_type = data.get("rental_property_type", contact.rental_property_type)
+            contact.checkin_date = data.get("checkin_date", contact.checkin_date)
+            contact.checkout_date = data.get("checkout_date", contact.checkout_date)
+
+            new_beds = safe_int(data.get("beds"))
+            if new_beds is not None:
+                contact.beds = new_beds
+            new_baths = safe_int(data.get("baths"))
+            if new_baths is not None:
+                contact.baths = new_baths
             contact.save()
             logger.info(f"Updated contact: {data['id']}")
         else:

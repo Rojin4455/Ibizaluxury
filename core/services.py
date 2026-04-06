@@ -247,8 +247,15 @@ class ContactServices:
                 min_price = customfields.get("min_price",""),
                 max_price = customfields.get("max_price",""),
                 province = customfields.get("province",""),
-                price_freq = customfields.get("price_freq",""),
+                price_freq = customfields.get("price_freq") or "",
                 property_type = customfields.get("property_type",""),
+                property_status = customfields.get("property_status",""),
+                preferred_location = customfields.get("preferred_location",""),
+                budget = customfields.get("budget",""),
+                weekly_price_range = customfields.get("weekly_price_range",""),
+                rental_property_type = customfields.get("rental_property_type",""),
+                checkin_date = customfields.get("checkin_date",""),
+                checkout_date = customfields.get("checkout_date",""),
                 beds = safe_int(customfields.get("beds")),
                 baths = safe_int(customfields.get("baths"))
 
@@ -265,7 +272,9 @@ class ContactServices:
         update_fields=[
             "first_name", "last_name", "email", "phone", "country", "location_id", "type",
             "date_added", "date_updated", "dnd", "min_price", "max_price", "province",
-            "price_freq", "property_type", "beds", "baths"
+            "price_freq", "property_type", "property_status", "preferred_location",
+            "budget", "weekly_price_range", "rental_property_type", "checkin_date",
+            "checkout_date", "beds", "baths"
         ],
         )
 
@@ -298,9 +307,10 @@ class ContactServices:
         if data and locatioId:
             for cf in data:
                 cf_obj = helpers.map_to_customfield(cf["id"],locatioId)
-                cf_dict[cf_obj.name.lower()]=cf["value"]
+                if cf_obj:
+                    cf_dict[cf_obj.name.lower()]=cf["value"]
         # print("added custom fields: ", cf_dict)     
-        return cf_dict
+        return helpers.normalize_contact_custom_fields(cf_dict)
 
 class CustomfieldServices:
 

@@ -72,6 +72,8 @@ def get_custom_field(location_id, field_id, access_token):
 
 from django.db import transaction
 from django.db.models import Q
+import re
+from decimal import Decimal, InvalidOperation
 
 def refresh_xml_feed(url):
     feed_link = XMLFeedLink.objects.filter(url=url).first()
@@ -202,6 +204,28 @@ def get_datetime(element, path):
 
 from django.core.exceptions import ValidationError
 
+def clean_price_value(price_str):
+    if not price_str:
+        return None
+    price_str = str(price_str).lower().strip()
+    if price_str.endswith("m"):
+        try:
+            return Decimal(price_str[:-1]) * 1000000
+        except InvalidOperation:
+            return None
+    if price_str.endswith("k"):
+        try:
+            return Decimal(price_str[:-1]) * 1000
+        except InvalidOperation:
+            return None
+    cleaned = re.sub(r"[^\d.]", "", price_str)
+    if not cleaned:
+        return None
+    try:
+        return Decimal(cleaned)
+    except InvalidOperation:
+        return None
+
 def get_filtered_properties_for_contact(contact, location_id=None):
     """
     Get properties based on contact's filter criteria
@@ -236,8 +260,13 @@ def get_filtered_properties_for_contact(contact, location_id=None):
     if max_price is not None:
         filters['price__lte'] = max_price
     
-    if contact.property_type and contact.property_type in ["land", "villa", "Villa", "Land", "appartment", "Appartment", "finca", "Finca"]:
-        filters['property_type'] = contact.property_type
+    if contact.property_type:
+        property_types = [pt.strip() for pt in str(contact.property_type).split(",") if pt.strip()]
+        if property_types:
+            type_q = Q()
+            for pt in property_types:
+                type_q |= Q(property_type__iexact=pt)
+            queryset = queryset.filter(type_q)
     if contact.price_freq:
         filters['price_freq'] = contact.price_freq
     if contact.province:

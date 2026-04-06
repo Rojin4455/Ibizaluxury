@@ -156,6 +156,21 @@ class ContactsView(APIView):
                 return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
 
         contacts = Contact.objects.all()
+        # Keep only contacts that have at least one effective filter value.
+        contacts = contacts.filter(
+            Q(min_price__isnull=False) & ~Q(min_price="") |
+            Q(max_price__isnull=False) & ~Q(max_price="") |
+            Q(province__isnull=False) & ~Q(province="") |
+            Q(price_freq__isnull=False) & ~Q(price_freq="") |
+            Q(property_type__isnull=False) & ~Q(property_type="") |
+            Q(preferred_location__isnull=False) & ~Q(preferred_location="") |
+            Q(property_status__isnull=False) & ~Q(property_status="") |
+            Q(budget__isnull=False) & ~Q(budget="") |
+            Q(weekly_price_range__isnull=False) & ~Q(weekly_price_range="") |
+            Q(rental_property_type__isnull=False) & ~Q(rental_property_type="") |
+            Q(beds__isnull=False) |
+            Q(baths__isnull=False)
+        )
         contacts = self.filter_queryset(request, contacts)
 
         # apply pagination

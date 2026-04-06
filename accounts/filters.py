@@ -3,6 +3,7 @@ import django_filters
 from django.db.models import Q
 from .models import PropertyData
 from core.models import Contact
+from .helpers import clean_price_value
 
 property_locations = (
     PropertyData.objects
@@ -17,10 +18,12 @@ class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
     pass
 
 class PropertyDataFilter(filters.FilterSet):
-    price_min = filters.NumberFilter(field_name="price", lookup_expr='gte')
-    price_max = filters.NumberFilter(field_name="price", lookup_expr='lte')
+    # CharFilter + method so values like "12k", "2.3m", "1.500.000" parse like contact prices
+    price_min = django_filters.CharFilter(method="filter_price_min")
+    price_max = django_filters.CharFilter(method="filter_price_max")
     price_freq = filters.CharFilter(field_name="price_freq", lookup_expr='icontains')
     town = CharInFilter(field_name="town", lookup_expr="in")
+    province = filters.CharFilter(field_name="province", lookup_expr="icontains")
 
     # town = django_filters.MultipleChoiceFilter(
     #     field_name="town",
@@ -39,8 +42,25 @@ class PropertyDataFilter(filters.FilterSet):
         model = PropertyData
         fields = [
             'property_type', 'price_min', 'price_max',
-            'price_freq', 'town', 'beds', 'baths','xml_url','currency'
+            'price_freq', 'town', 'province', 'beds', 'baths', 'xml_url', 'currency'
             ]
+
+    def filter_price_min(self, queryset, name, value):
+        if value is None or not str(value).strip():
+            return queryset
+        parsed = clean_price_value(value)
+        if parsed is None:
+            return queryset
+        return queryset.filter(price__gte=parsed)
+
+    def filter_price_max(self, queryset, name, value):
+        if value is None or not str(value).strip():
+            return queryset
+        parsed = clean_price_value(value)
+        if parsed is None:
+            return queryset
+        return queryset.filter(price__lte=parsed)
+
     def filter_beds(self, queryset, name, value):
         if value >= 4:
             return queryset.filter(**{f"{name}__gte": value})
