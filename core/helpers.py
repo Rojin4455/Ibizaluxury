@@ -4,6 +4,31 @@ from datetime import datetime
 import re
 
 
+def normalize_ghl_tags(tags):
+    """
+    GHL may send tags as list[str] or list[{"id": "...", "name": "..."}].
+    Returns a list of strings suitable for Contact.tags (JSONField).
+    """
+    if tags is None:
+        return []
+    if isinstance(tags, str):
+        s = tags.strip()
+        return [s] if s else []
+    if not isinstance(tags, list):
+        return []
+    out = []
+    for t in tags:
+        if isinstance(t, str):
+            s = t.strip()
+            if s:
+                out.append(s)
+        elif isinstance(t, dict):
+            name = t.get("name") or t.get("label") or t.get("tag") or t.get("id")
+            if name is not None and str(name).strip():
+                out.append(str(name).strip())
+    return out
+
+
 def map_to_customfield(custom_field_id, location_id):
     custom_field = CustomField.objects.filter(id = custom_field_id, location_id = location_id)
     if custom_field:

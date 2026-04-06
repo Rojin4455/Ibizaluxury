@@ -137,11 +137,86 @@ class ContactServiceError(Exception):
     pass
 
 class ContactServices:
-    
     @staticmethod
-    def get_contacts(location_id,query=None, url=None, limit=LIMIT_PER_PAGE):
+    def _contacts_abs_url(url):
+        if not url:
+            return None
+        u = str(url).strip()
+        if u.startswith("http://") or u.startswith("https://"):
+            return u
+        if u.startswith("/"):
+            return f"{BASE_URL.rstrip('/')}{u}"
+        return u
+
+    @staticmethod
+    def _fetch_all_contacts_pages(location_id, query=None, limit=LIMIT_PER_PAGE):
+        """
+        Walk every page of contacts for a location. Uses meta.nextPageURL when present;
+        otherwise falls back to startAfterId/startAfter cursor (GHL often omits nextPageURL).
+        """
+        collected = []
+        next_url = None
+        start_after_id = None
+        start_after = None
+        pages = 0
+        max_pages = 5000
+
+        while pages < max_pages:
+            pages += 1
+            response_data = ContactServices.get_contacts(
+                location_id=location_id,
+                query=query,
+                url=next_url,
+                limit=limit,
+                start_after_id=start_after_id,
+                start_after=start_after,
+            )
+            contacts = response_data.get("contacts") or []
+            collected.extend(contacts)
+            if not contacts:
+                break
+
+            meta = response_data.get("meta") or {}
+            raw_next = (
+                meta.get("nextPageURL")
+                or meta.get("nextPageUrl")
+                or meta.get("next_page_url")
+                or meta.get("next")
+            )
+            if not raw_next:
+                raw_next = (response_data.get("links") or {}).get("next")
+
+            abs_next = ContactServices._contacts_abs_url(raw_next)
+            if abs_next:
+                next_url = abs_next
+                start_after_id = None
+                start_after = None
+                continue
+
+            if len(contacts) < limit:
+                break
+
+            last = contacts[-1]
+            start_after_id = last.get("id")
+            start_after = last.get("dateAdded") or last.get("dateUpdated")
+            next_url = None
+            if not start_after_id:
+                break
+
+        return collected
+
+    @staticmethod
+    def get_contacts(
+        location_id,
+        query=None,
+        url=None,
+        limit=LIMIT_PER_PAGE,
+        start_after_id=None,
+        start_after=None,
+    ):
         """
         Fetch contacts from GoHighLevel API with given parameters.
+        When ``url`` is set, cursor params are ignored (next-page URL carries state).
         """
         token_obj = OAuthServices.get_valid_access_token_obj(location_id)
         headers = {
@@ -153,14 +228,18 @@ class ContactServices:
         if url:
             response = requests.get(url, headers=headers)
         else:
-            url = f"{BASE_URL}/contacts/"
+            api_url = f"{BASE_URL}/contacts/"
             params = {
                 "locationId": token_obj.LocationId,
                 "limit": limit,
             }
             if query:
                 params["query"] = query
-            response = requests.get(url, headers=headers, params=params)
+            if start_after_id:
+                params["startAfterId"] = start_after_id
+            if start_after:
+                params["startAfter"] = start_after
+            response = requests.get(api_url, headers=headers, params=params)
 
         if response.status_code == 200:
             return response.json()
@@ -190,7 +269,7 @@ class ContactServices:
     @staticmethod
     def pull_contacts(query=None):
         """
-        Fetch all contacts using nextPageURL-based pagination and save them to the database.
+        Fetch all contacts using full pagination (nextPageURL and/or startAfterId) and save them.
         """
         imported_contacts_summary = []
         location_ids = list(OAuthToken.objects.values_list('LocationId', flat=True))
@@ -198,29 +277,63 @@ class ContactServices:
             if not location_id=="ttQIDuvyngILWMJ5wABA":
                 continue
             tokenobj :OAuthToken = OAuthServices.get_valid_access_token_obj(location_id)
-            all_contacts = []
-            url = None
-            i = 0
-            
-            
-
-            while True:
-                response_data = ContactServices.get_contacts(location_id=tokenobj.LocationId,query=query, url=url)
-                contacts = response_data.get("contacts", [])
-                all_contacts.extend(contacts)
-
-                print(contacts)
-                print(len(all_contacts), i, end='\n\n')
-                if not response_data.get("meta", {}).get("nextPageURL"):
-                    break  # No next page
-
-                url = response_data["meta"]["nextPageURL"]
-                i += 1
-
+            all_contacts = ContactServices._fetch_all_contacts_pages(
+                tokenobj.LocationId, query=query
+            )
             ContactServices._save_contacts(all_contacts)
             imported_contacts_summary.append(f"{location_id}: Imported {len(all_contacts)} contacts")
         return imported_contacts_summary
-        
+
+    @staticmethod
+    def sync_contact_tags_from_ghl(query=None, location_id=None):
+        """
+        Fetch all contacts from GHL (paginated per location) and update only ``tags`` for contacts
+        that already exist in the database. Does not create contacts or modify any other field.
+
+        Args:
+            query: Optional search string passed to the GHL contacts API.
+            location_id: If set, only sync this OAuth location. If None, every stored OAuth location
+                is processed.
+
+        Returns:
+            list[str]: One summary line per processed location.
+        """
+        summaries = []
+        if location_id:
+            if not OAuthToken.objects.filter(LocationId=location_id).exists():
+                return [f"{location_id}: skipped (no OAuth token for this location)"]
+            location_ids = [location_id]
+        else:
+            location_ids = list(OAuthToken.objects.values_list("LocationId", flat=True))
+
+        existing_ids = set(Contact.objects.values_list("id", flat=True))
+
+        for loc_id in location_ids:
+            tokenobj = OAuthServices.get_valid_access_token_obj(loc_id)
+            by_id = {}
+            for c in ContactServices._fetch_all_contacts_pages(
+                tokenobj.LocationId, query=query
+            ):
+                cid = c.get("id")
+                if cid:
+                    by_id[cid] = c
+
+            to_update = []
+            for cid, c in by_id.items():
+                if cid not in existing_ids:
+                    continue
+                tags = helpers.normalize_ghl_tags(c.get("tags"))
+                to_update.append(Contact(id=cid, tags=tags))
+
+            if to_update:
+                Contact.objects.bulk_update(to_update, ["tags"], batch_size=500)
+
+            summaries.append(
+                f"{loc_id}: fetched {len(by_id)} from GHL, updated tags on {len(to_update)} existing contacts"
+            )
+
+        return summaries
+
 
     @staticmethod
     def _save_contacts(contacts):
@@ -257,7 +370,8 @@ class ContactServices:
                 checkin_date = customfields.get("checkin_date",""),
                 checkout_date = customfields.get("checkout_date",""),
                 beds = safe_int(customfields.get("beds")),
-                baths = safe_int(customfields.get("baths"))
+                baths = safe_int(customfields.get("baths")),
+                tags=helpers.normalize_ghl_tags(contact.get("tags")),
 
             ))
         print(contact_objects)
@@ -274,7 +388,7 @@ class ContactServices:
             "date_added", "date_updated", "dnd", "min_price", "max_price", "province",
             "price_freq", "property_type", "property_status", "preferred_location",
             "budget", "weekly_price_range", "rental_property_type", "checkin_date",
-            "checkout_date", "beds", "baths"
+            "checkout_date", "beds", "baths", "tags"
         ],
         )
 

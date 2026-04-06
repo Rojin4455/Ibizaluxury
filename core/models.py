@@ -11,6 +11,10 @@ from decimal import Decimal, InvalidOperation
 #     return apps.get_model('accounts', 'XMLFeedLink')
 
 # Create your models here.
+
+
+def default_contact_tags():
+    return []
 # class User(AbstractUser):
 #     username = models.CharField(max_length=150, unique=True, blank=True, null=True)
 #     email = models.EmailField(unique=True)
@@ -82,6 +86,7 @@ class Contact(models.Model):
     checkout_date = models.CharField(max_length=50, null=True, blank=True)
     beds = models.IntegerField(null=True, blank=True)
     baths = models.IntegerField(null=True, blank=True)
+    tags = models.JSONField(default=default_contact_tags, blank=True)
     properties = models.ManyToManyField('accounts.PropertyData', blank=True, related_name="contacts")
     remarks = models.TextField(null=True, blank=True)
     selec_url = models.URLField(null=True, blank=True)

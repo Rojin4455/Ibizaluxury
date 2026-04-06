@@ -226,6 +226,58 @@ def clean_price_value(price_str):
     except InvalidOperation:
         return None
 
+
+def normalized_contact_tag_tokens(contact):
+    """Lowercased tokens from Contact.tags (whole tag + split on space, /, _)."""
+    tags = getattr(contact, "tags", None) or []
+    if not isinstance(tags, list):
+        return set()
+    out = set()
+    for raw in tags:
+        s = str(raw).lower().strip()
+        if not s:
+            continue
+        out.add(s)
+        for part in re.split(r"[\s/_]+", s):
+            p = part.strip()
+            if p:
+                out.add(p)
+    return out
+
+
+def property_price_freq_q_sale():
+    """PropertyData rows that look like a sale listing."""
+    return Q(price_freq__iexact="sale") | Q(price_freq__icontains="sale")
+
+
+def property_price_freq_q_rental():
+    """PropertyData rows that look like a rental (feed often uses week/rental)."""
+    return (
+        Q(price_freq__iexact="rental")
+        | Q(price_freq__iexact="week")
+        | Q(price_freq__icontains="rental")
+        | Q(price_freq__icontains="week")
+    )
+
+
+def property_price_freq_q_from_tags(tokens):
+    """
+    If tags mention sale and/or rental, return a Q for PropertyData.price_freq OR None.
+    Both sale and rental -> union of both property groups.
+    """
+    if not tokens:
+        return None
+    wants_sale = "sale" in tokens
+    wants_rental = "rental" in tokens
+    if wants_sale and wants_rental:
+        return property_price_freq_q_sale() | property_price_freq_q_rental()
+    if wants_sale:
+        return property_price_freq_q_sale()
+    if wants_rental:
+        return property_price_freq_q_rental()
+    return None
+
+
 def get_filtered_properties_for_contact(contact, location_id=None):
     """
     Get properties based on contact's filter criteria
@@ -267,8 +319,15 @@ def get_filtered_properties_for_contact(contact, location_id=None):
             for pt in property_types:
                 type_q |= Q(property_type__iexact=pt)
             queryset = queryset.filter(type_q)
-    if contact.price_freq:
-        filters['price_freq'] = contact.price_freq
+
+    pf_raw = (contact.price_freq or "").strip()
+    if pf_raw:
+        filters["price_freq"] = contact.price_freq
+    else:
+        tag_q = property_price_freq_q_from_tags(normalized_contact_tag_tokens(contact))
+        if tag_q is not None:
+            queryset = queryset.filter(tag_q)
+
     if contact.province:
         filters['province'] = contact.province
     if contact.beds:

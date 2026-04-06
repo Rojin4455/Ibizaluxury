@@ -3,7 +3,11 @@ import django_filters
 from django.db.models import Q
 from .models import PropertyData
 from core.models import Contact
-from .helpers import clean_price_value
+from .helpers import (
+    clean_price_value,
+    property_price_freq_q_rental,
+    property_price_freq_q_sale,
+)
 
 property_locations = (
     PropertyData.objects
@@ -22,6 +26,8 @@ class PropertyDataFilter(filters.FilterSet):
     price_min = django_filters.CharFilter(method="filter_price_min")
     price_max = django_filters.CharFilter(method="filter_price_max")
     price_freq = filters.CharFilter(field_name="price_freq", lookup_expr='icontains')
+    # Comma-separated: sale, rental — OR match on PropertyData.price_freq (aligns with contact tags)
+    price_freq_modes = django_filters.CharFilter(method="filter_price_freq_modes")
     town = CharInFilter(field_name="town", lookup_expr="in")
     province = filters.CharFilter(field_name="province", lookup_expr="icontains")
 
@@ -42,7 +48,7 @@ class PropertyDataFilter(filters.FilterSet):
         model = PropertyData
         fields = [
             'property_type', 'price_min', 'price_max',
-            'price_freq', 'town', 'province', 'beds', 'baths', 'xml_url', 'currency'
+            'price_freq', 'price_freq_modes', 'town', 'province', 'beds', 'baths', 'xml_url', 'currency'
             ]
 
     def filter_price_min(self, queryset, name, value):
@@ -60,6 +66,17 @@ class PropertyDataFilter(filters.FilterSet):
         if parsed is None:
             return queryset
         return queryset.filter(price__lte=parsed)
+
+    def filter_price_freq_modes(self, queryset, name, value):
+        if value is None or not str(value).strip():
+            return queryset
+        modes = {x.strip().lower() for x in str(value).split(",") if x.strip()}
+        q_main = Q()
+        if "sale" in modes:
+            q_main |= property_price_freq_q_sale()
+        if "rental" in modes:
+            q_main |= property_price_freq_q_rental()
+        return queryset.filter(q_main) if q_main else queryset
 
     def filter_beds(self, queryset, name, value):
         if value >= 4:

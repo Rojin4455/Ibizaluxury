@@ -61,9 +61,9 @@ class ContactWebhookView(APIView):
             "email":payload.get("email"),
             "phone":payload.get("phone",""),
             "locationId":payload.get("locationId"),
-            **customfields
-            
-            }
+            **customfields,
+        }
+        contact_data["tags"] = helpers.normalize_ghl_tags(payload.get("tags"))
 
         if WebhookLog.objects.filter(webhook_id=webhook_id).exists():
             return Response({"error": "Duplicate webhook detected"}, status=status.HTTP_409_CONFLICT)
@@ -79,10 +79,10 @@ class ContactWebhookView(APIView):
             self.delete_contact(contact_data)
         elif event_type == "ContactUpdate":
             self.update_contact(contact_data)
+        elif event_type == "ContactTagUpdate":
+            self.update_contact_tags(payload)
         # elif event_type == "ContactDndUpdate":
         #     self.update_contact_dnd(contact_data)
-        # elif event_type == "ContactTagUpdate":
-        #     self.update_contact_tags(contact_data)
         # elif event_type == "NoteCreate":
         #     self.create_note(contact_data)
         # elif event_type == "NoteDelete":
@@ -128,7 +128,8 @@ class ContactWebhookView(APIView):
             checkin_date = data.get("checkin_date",""),
             checkout_date = data.get("checkout_date",""),
             beds = safe_int(data.get("beds")),
-            baths = safe_int(data.get("baths"))
+            baths = safe_int(data.get("baths")),
+            tags=data.get("tags") or [],
         )
     
     def update_contact(self, data):
@@ -161,6 +162,8 @@ class ContactWebhookView(APIView):
             new_baths = safe_int(data.get("baths"))
             if new_baths is not None:
                 contact.baths = new_baths
+            if "tags" in data:
+                contact.tags = data["tags"] if isinstance(data["tags"], list) else helpers.normalize_ghl_tags(data.get("tags"))
             contact.save()
             logger.info(f"Updated contact: {data['id']}")
         else:
@@ -169,6 +172,19 @@ class ContactWebhookView(APIView):
     def delete_contact(self, data):
         """ Deletes a contact """
         Contact.objects.filter(id=data["id"]).delete()
+
+    def update_contact_tags(self, payload):
+        """ContactTagUpdate: sync tags only from GHL."""
+        cid = payload.get("id")
+        if not cid:
+            logger.warning("ContactTagUpdate missing id")
+            return
+        tags = helpers.normalize_ghl_tags(payload.get("tags"))
+        updated = Contact.objects.filter(id=cid).update(tags=tags)
+        if updated:
+            logger.info(f"Updated tags for contact: {cid}")
+        else:
+            logger.warning(f"Contact {cid} not found for ContactTagUpdate")
 
 
 
