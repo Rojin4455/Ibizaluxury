@@ -1,6 +1,10 @@
+from decimal import Decimal
+
 from django_filters import rest_framework as filters
 import django_filters
-from django.db.models import Q
+from django.db.models import F, Q, TextField, Value, DecimalField
+from django.db.models.functions import Cast, Coalesce
+
 from .models import PropertyData
 from core.models import Contact
 from .helpers import (
@@ -98,22 +102,86 @@ class PropertyDataFilter(filters.FilterSet):
 
 
 class ContactFilter(filters.FilterSet):
-    location_id = filters.CharFilter(lookup_expr='exact')
-    search = filters.CharFilter(method='filter_search')
+    location_id = filters.CharFilter(lookup_expr="exact")
+    search = filters.CharFilter(method="filter_search")
+    # all | sale | rental | both — matches tags, property_status, price_freq
+    listing_type = django_filters.CharFilter(method="filter_listing_type")
+    contact_price_min = django_filters.CharFilter(method="filter_contact_price_bounds")
+    contact_price_max = django_filters.CharFilter(method="filter_contact_price_bounds")
+    # Free text: villa, apartment, etc. (matches property_type and rental_property_type)
+    contact_property_type = django_filters.CharFilter(method="filter_contact_property_type")
 
     class Meta:
         model = Contact
-        fields = ['location_id']
+        fields = ["location_id"]
 
     def filter_search(self, queryset, name, value):
         if not value or not value.strip():
             return queryset
         q = value.strip()
         return queryset.filter(
-            Q(first_name__icontains=q) |
-            Q(last_name__icontains=q) |
-            Q(email__icontains=q) |
-            Q(phone__icontains=q)
+            Q(first_name__icontains=q)
+            | Q(last_name__icontains=q)
+            | Q(email__icontains=q)
+            | Q(phone__icontains=q)
+        )
+
+    def filter_listing_type(self, queryset, name, value):
+        v = (value or "").strip().lower()
+        if not v or v == "all":
+            return queryset
+
+        qs = queryset.annotate(_listing_tags_txt=Cast(F("tags"), output_field=TextField()))
+        q_sale = (
+            Q(property_status__iexact="sale")
+            | Q(price_freq__iexact="sale")
+            | Q(price_freq__icontains="sale")
+            | Q(_listing_tags_txt__icontains="sale")
+        )
+        q_rental = (
+            Q(property_status__iexact="rental")
+            | Q(price_freq__iexact="week")
+            | Q(price_freq__icontains="week")
+            | Q(price_freq__icontains="rental")
+            | Q(_listing_tags_txt__icontains="rental")
+        )
+        if v == "sale":
+            return qs.filter(q_sale)
+        if v == "rental":
+            return qs.filter(q_rental)
+        if v == "both":
+            return qs.filter(q_sale & q_rental)
+        return queryset
+
+    def filter_contact_price_bounds(self, queryset, name, value):
+        # django-filter invokes this for both contact_price_min and contact_price_max
+        if getattr(self, "_contact_price_bounds_applied", False):
+            return queryset
+        self._contact_price_bounds_applied = True
+
+        pmin = clean_price_value(self.data.get("contact_price_min"))
+        pmax = clean_price_value(self.data.get("contact_price_max"))
+        if pmin is None and pmax is None:
+            return queryset
+
+        floor = pmin if pmin is not None else Decimal(0)
+        ceiling = pmax if pmax is not None else Decimal("999999999999999")
+        dec = DecimalField(max_digits=20, decimal_places=2)
+        open_hi = Decimal("999999999999999")
+
+        return queryset.annotate(
+            _cb_lo=Coalesce("min_price_value", Value(Decimal(0)), output_field=dec),
+            _cb_hi=Coalesce("max_price_value", Value(open_hi), output_field=dec),
+        ).filter(_cb_lo__lte=ceiling, _cb_hi__gte=floor)
+
+    def filter_contact_property_type(self, queryset, name, value):
+        if not value or not str(value).strip():
+            return queryset
+        v = str(value).strip()
+        if v.lower() == "all":
+            return queryset
+        return queryset.filter(
+            Q(property_type__icontains=v) | Q(rental_property_type__icontains=v)
         )
 
 

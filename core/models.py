@@ -74,6 +74,9 @@ class Contact(models.Model):
     dnd = models.BooleanField(default=False)
     min_price = models.CharField(max_length=200, null=True, blank=True)
     max_price = models.CharField(max_length=200, null=True, blank=True)
+    # Parsed from min_price / max_price for fast DB-side overlap filters (kept in sync in save()).
+    min_price_value = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    max_price_value = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
     province = models.CharField(max_length=50, null=True, blank=True)
     price_freq = models.CharField(max_length=50, null=True, blank=True)
     property_type = models.CharField(max_length=100, null=True, blank=True)
@@ -155,6 +158,11 @@ class Contact(models.Model):
     def max_price_decimal(self):
         """Get max_price as decimal value"""
         return self.clean_price_value(self.max_price)
+
+    def save(self, *args, **kwargs):
+        self.min_price_value = self.clean_price_value(self.min_price) if self.min_price else None
+        self.max_price_value = self.clean_price_value(self.max_price) if self.max_price else None
+        super().save(*args, **kwargs)
 
     def clean(self):
         """Custom validation"""

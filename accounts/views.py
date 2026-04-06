@@ -25,7 +25,7 @@ from django.db.models import Q
 from core.models import OAuthToken
 
 
-from accounts.helpers import refresh_xml_feed,get_filtered_properties_for_contact
+from accounts.helpers import refresh_xml_feed, get_property_match_stats_for_contact
 
 
 
@@ -169,9 +169,15 @@ class ContactsView(APIView):
             Q(weekly_price_range__isnull=False) & ~Q(weekly_price_range="") |
             Q(rental_property_type__isnull=False) & ~Q(rental_property_type="") |
             Q(beds__isnull=False) |
-            Q(baths__isnull=False)
+            Q(baths__isnull=False) |
+            (Q(tags__isnull=False) & ~Q(tags=[]))
         )
         contacts = self.filter_queryset(request, contacts)
+        contacts = contacts.prefetch_related("properties")
+
+        location_for_props = request.query_params.get("location_id") or request.query_params.get(
+            "locationId"
+        )
 
         # apply pagination
         page = self.paginate_queryset(contacts, request, view=self)
@@ -179,24 +185,32 @@ class ContactsView(APIView):
             response_data = []
             for contact in page:
                 contact_data = ContactsSerializer(contact).data
-                properties = get_filtered_properties_for_contact(contact)
-                property_data = PropertyDataSerializer(properties, many=True).data
-                response_data.append({
-                    "contact": contact_data,
-                    "properties": property_data,
-                })
+                stats = get_property_match_stats_for_contact(
+                    contact, location_id=location_for_props
+                )
+                response_data.append(
+                    {
+                        "contact": contact_data,
+                        "property_match_count": stats["count"],
+                        "property_match_total_value": float(stats["total_price"]),
+                        "properties": [],
+                    }
+                )
             return self.get_paginated_response(response_data)
 
         # if paginator not applied, return full list (rare case)
         response_data = []
         for contact in contacts:
             contact_data = ContactsSerializer(contact).data
-            properties = get_filtered_properties_for_contact(contact)
-            property_data = PropertyDataSerializer(properties, many=True).data
-            response_data.append({
-                "contact": contact_data,
-                "properties": property_data,
-            })
+            stats = get_property_match_stats_for_contact(contact, location_id=location_for_props)
+            response_data.append(
+                {
+                    "contact": contact_data,
+                    "property_match_count": stats["count"],
+                    "property_match_total_value": float(stats["total_price"]),
+                    "properties": [],
+                }
+            )
         return Response(response_data, status=status.HTTP_200_OK)
 
     def put(self, request, id=None):

@@ -340,11 +340,15 @@ class ContactServices:
         """
         Bulk save contacts to the database.
         """
+        from accounts.helpers import clean_price_value as _contact_price_decimal
+
         unique_contacts = {contact["id"]: contact for contact in contacts}.values()  # Remove duplicates
         contact_objects = []
         for contact in unique_contacts:
             customfields = ContactServices.add_customfields(contact.get("customFields"),contact.get("locationId",""))
             print("customfields",customfields)
+            min_p = customfields.get("min_price", "") or ""
+            max_p = customfields.get("max_price", "") or ""
             contact_objects.append(Contact(
                 id=contact["id"],
                 first_name=contact.get("firstName", ""),
@@ -357,8 +361,10 @@ class ContactServices:
                 date_added=datetime.fromisoformat(contact["dateAdded"].replace("Z", "+00:00")) if contact.get("dateAdded") else None,
                 date_updated=datetime.fromisoformat(contact["dateUpdated"].replace("Z", "+00:00")) if contact.get("dateUpdated") else None,
                 dnd=contact.get("dnd", False),
-                min_price = customfields.get("min_price",""),
-                max_price = customfields.get("max_price",""),
+                min_price=min_p,
+                max_price=max_p,
+                min_price_value=_contact_price_decimal(min_p) if min_p else None,
+                max_price_value=_contact_price_decimal(max_p) if max_p else None,
                 province = customfields.get("province",""),
                 price_freq = customfields.get("price_freq") or "",
                 property_type = customfields.get("property_type",""),
@@ -385,7 +391,8 @@ class ContactServices:
         unique_fields=["id"],
         update_fields=[
             "first_name", "last_name", "email", "phone", "country", "location_id", "type",
-            "date_added", "date_updated", "dnd", "min_price", "max_price", "province",
+            "date_added", "date_updated", "dnd", "min_price", "max_price", "min_price_value",
+            "max_price_value", "province",
             "price_freq", "property_type", "property_status", "preferred_location",
             "budget", "weekly_price_range", "rental_property_type", "checkin_date",
             "checkout_date", "beds", "baths", "tags"

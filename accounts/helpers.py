@@ -71,7 +71,7 @@ def get_custom_field(location_id, field_id, access_token):
 
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Count, Sum
 import re
 from decimal import Decimal, InvalidOperation
 
@@ -278,40 +278,51 @@ def property_price_freq_q_from_tags(tokens):
     return None
 
 
-def get_filtered_properties_for_contact(contact, location_id=None):
+def property_listing_q_when_no_price_freq(contact):
     """
-    Get properties based on contact's filter criteria
+    When contact.price_freq is empty, derive sale/rental filter from GHL tags and/or
+    property_status (same signals as the frontend).
     """
-    # Start with base queryset
-    queryset = PropertyData.objects.select_related('xml_url').filter(xml_url__active=True)
-    
-    # Apply location-based filtering
+    tokens = set(normalized_contact_tag_tokens(contact))
+    ps = (getattr(contact, "property_status", None) or "").strip().lower()
+    if ps == "sale":
+        tokens.add("sale")
+    if ps == "rental":
+        tokens.add("rental")
+    return property_price_freq_q_from_tags(tokens)
+
+
+def get_filtered_properties_queryset_for_contact(contact, location_id=None):
+    """
+    PropertyData queryset for a contact's criteria (not ordered).
+    Use this for counts/aggregates; use get_filtered_properties_for_contact for a list.
+    """
+    queryset = PropertyData.objects.select_related("xml_url").filter(xml_url__active=True)
+
     if location_id:
         xml_feed_link = XMLFeedLink.objects.filter(subaccounts__LocationId=location_id)
         if xml_feed_link:
             queryset = queryset.filter(xml_url__in=xml_feed_link)
         else:
-            return queryset.none()
-    
-    # Create filters based on contact criteria
+            return PropertyData.objects.none()
+
     filters = {}
-    
-    # Use the model's decimal properties if available, otherwise clean manually
-    if hasattr(contact, 'min_price_decimal'):
+
+    if hasattr(contact, "min_price_decimal"):
         min_price = contact.min_price_decimal
     else:
         min_price = clean_price_value(contact.min_price) if contact.min_price else None
-    
-    if hasattr(contact, 'max_price_decimal'):
+
+    if hasattr(contact, "max_price_decimal"):
         max_price = contact.max_price_decimal
     else:
         max_price = clean_price_value(contact.max_price) if contact.max_price else None
-    
+
     if min_price is not None:
-        filters['price__gte'] = min_price
+        filters["price__gte"] = min_price
     if max_price is not None:
-        filters['price__lte'] = max_price
-    
+        filters["price__lte"] = max_price
+
     if contact.property_type:
         property_types = [pt.strip() for pt in str(contact.property_type).split(",") if pt.strip()]
         if property_types:
@@ -324,25 +335,40 @@ def get_filtered_properties_for_contact(contact, location_id=None):
     if pf_raw:
         filters["price_freq"] = contact.price_freq
     else:
-        tag_q = property_price_freq_q_from_tags(normalized_contact_tag_tokens(contact))
-        if tag_q is not None:
-            queryset = queryset.filter(tag_q)
+        listing_q = property_listing_q_when_no_price_freq(contact)
+        if listing_q is not None:
+            queryset = queryset.filter(listing_q)
 
     if contact.province:
-        filters['province'] = contact.province
+        filters["province"] = contact.province
     if contact.beds:
-        filters['beds'] = contact.beds
+        filters["beds"] = contact.beds
     if contact.baths:
-        filters['baths'] = contact.baths
+        filters["baths"] = contact.baths
 
-    
-    # Apply filters
     if filters:
         try:
             queryset = queryset.filter(**filters)
         except ValidationError as e:
-            # Log the error and return empty queryset if filtering fails
             print(f"Filtering error: {e}")
-            return queryset.none()
-    
-    return queryset.order_by('-created_at')
+            return PropertyData.objects.none()
+
+    return queryset
+
+
+def get_property_match_stats_for_contact(contact, location_id=None):
+    """Single-query count + sum(price) for dashboard rows (avoids serializing every property)."""
+    qs = get_filtered_properties_queryset_for_contact(contact, location_id=location_id)
+    agg = qs.aggregate(n=Count("pk"), s=Sum("price"))
+    total = agg["s"]
+    return {
+        "count": agg["n"] or 0,
+        "total_price": total if total is not None else Decimal(0),
+    }
+
+
+def get_filtered_properties_for_contact(contact, location_id=None):
+    """Ordered PropertyData queryset for a contact (detail views, emails, etc.)."""
+    return get_filtered_properties_queryset_for_contact(contact, location_id=location_id).order_by(
+        "-created_at"
+    )
