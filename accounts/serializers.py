@@ -42,19 +42,29 @@ class ContactsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
         # fields = "__all__"
-        exclude = ['remarks', 'selec_url'] 
-        
+        exclude = ['remarks', 'selec_url', 'is_active']
+
+
 class ContactSelectionSerializer(serializers.ModelSerializer):
     properties_detail = PropertyDataSerializer(source="properties", many=True, read_only=True)
     properties = serializers.PrimaryKeyRelatedField(
         queryset=PropertyData.objects.filter(xml_url__active=True),
         many=True,
-        write_only=True
+        write_only=True,
     )
+    last_shared_property_ids = serializers.JSONField(read_only=True)
 
     class Meta:
         model = Contact
-        fields = ['id', 'location_id', 'properties', 'properties_detail', 'remarks', 'selec_url']
+        fields = [
+            'id',
+            'location_id',
+            'properties',
+            'properties_detail',
+            'remarks',
+            'selec_url',
+            'last_shared_property_ids',
+        ]
     
     def ghl_update(self, instance: Contact):
         urlfield = CustomField.objects.get(field_key='contact.app_preview_url',location_id=instance.location_id)
@@ -73,6 +83,42 @@ class ContactSelectionSerializer(serializers.ModelSerializer):
         }
         ContactServices.push_contact(instance, data=payload)
 
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['properties'] = list(instance.properties.values_list('id', flat=True))
+        detail = rep.get('properties_detail') or []
+        last_ids = instance.last_shared_property_ids or []
+        if not detail or not last_ids:
+            return rep
+
+        def norm_key(k):
+            if k is None:
+                return None
+            if isinstance(k, int):
+                return k
+            try:
+                return int(k)
+            except (TypeError, ValueError):
+                return k
+
+        id_to_item = {item['id']: item for item in detail}
+        ordered = []
+        seen = set()
+        for lid in last_ids:
+            key = norm_key(lid)
+            cand = id_to_item.get(key) if key is not None else None
+            if cand is None:
+                cand = id_to_item.get(lid)
+            if cand and cand['id'] not in seen:
+                ordered.append(cand)
+                seen.add(cand['id'])
+        for item in detail:
+            if item['id'] not in seen:
+                ordered.append(item)
+                seen.add(item['id'])
+        rep['properties_detail'] = ordered
+        return rep
+
     def update(self, instance, validated_data):
         allowed_fields = {'properties', 'remarks', 'selec_url'}
         input_fields = set(validated_data.keys())
@@ -80,11 +126,18 @@ class ContactSelectionSerializer(serializers.ModelSerializer):
         if not input_fields.issubset(allowed_fields):
             raise serializers.ValidationError("Only properties, remarks, and selec_url can be updated.")
 
-        # Handle properties separately
         properties = validated_data.pop('properties', None)
-        if properties is not None:
-            instance.properties.set(properties)
         obj = super().update(instance, validated_data)
+        if properties is not None:
+            if len(properties) == 0:
+                raise serializers.ValidationError(
+                    {"properties": "Select at least one property to share."}
+                )
+            ids_this_send = [p.pk for p in properties]
+            for p in properties:
+                obj.properties.add(p)
+            obj.last_shared_property_ids = ids_this_send
+            obj.save(update_fields=['last_shared_property_ids'])
         self.ghl_update(obj)
         return obj
 

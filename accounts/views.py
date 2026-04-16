@@ -149,13 +149,13 @@ class ContactsView(APIView):
 
         if id:
             try:
-                contact = Contact.objects.get(id=id)
+                contact = Contact.objects.get(id=id, is_active=True)
                 serializer = serializer_class(contact)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Contact.DoesNotExist:
                 return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        contacts = Contact.objects.all()
+        contacts = Contact.objects.filter(is_active=True)
         # Keep only contacts that have at least one effective filter value.
         contacts = contacts.filter(
             Q(min_price__isnull=False) & ~Q(min_price="") |
@@ -218,7 +218,7 @@ class ContactsView(APIView):
             return Response({"detail": "ID is required for update"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            contact = Contact.objects.get(id=id)
+            contact = Contact.objects.get(id=id, is_active=True)
         except Contact.DoesNotExist:
             return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -226,6 +226,16 @@ class ContactsView(APIView):
         if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, id=None):
+        if not id:
+            return Response(
+                {"detail": "ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        updated = Contact.objects.filter(id=id, is_active=True).update(is_active=False)
+        if not updated:
+            return Response({"detail": "Contact not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": "Contact deactivated"}, status=status.HTTP_200_OK)
 
 
 class FilterView(APIView):

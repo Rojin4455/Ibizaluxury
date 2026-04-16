@@ -93,6 +93,9 @@ class Contact(models.Model):
     properties = models.ManyToManyField('accounts.PropertyData', blank=True, related_name="contacts")
     remarks = models.TextField(null=True, blank=True)
     selec_url = models.URLField(null=True, blank=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    # Property IDs from the most recent admin "send"; all-time shared set is the properties M2M.
+    last_shared_property_ids = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ['-date_added']
